@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storm Motion · Phase 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ---------------------------------------------------------------
+   CONFIG lives in the script block at the bottom of this file.
+   Palette: shaded relief off a USGS quad sheet of the La Sals at
+   dusk. Deliberately not a radar-scope green console.
+   --------------------------------------------------------------- */
+:root{
+  --ink:#171c22;          /* deep shadow: page ground */
+  --panel:#1f262e;        /* raised surface */
+  --rule:#333e49;         /* hairline */
+  --paper:#e6e1d6;        /* warm off-white, primary type */
+  --muted:#8b97a3;        /* secondary type */
+  --approach:#e39a2b;     /* sodium amber: closing on the basin */
+  --recede:#4e8fa8;       /* slate blue: moving away */
+  --quiet:#6f7f74;        /* detected, unmatched */
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  font-size:13px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding:14px;
+}
+.lbl{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  font-size:10px;
+  color:var(--muted);
+}
+
+/* --- status bar ------------------------------------------------ */
+.bar{
+  display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
+  padding-bottom:10px;margin-bottom:14px;
+  border-bottom:1px solid var(--rule);
+}
+.bar h1{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-size:15px;font-weight:600;letter-spacing:.2em;
+  text-transform:uppercase;margin:0;
+}
+.bar h1 span{color:var(--muted);font-weight:400}
+.stat{display:flex;align-items:baseline;gap:7px}
+.stat b{font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
+.dot{
+  width:7px;height:7px;border-radius:50%;
+  display:inline-block;flex:0 0 auto;align-self:center;
+}
+.dot.live{background:var(--approach)}
+.dot.stale{background:var(--recede)}
+.dot.dead{background:#8d4a3f}
+@media (prefers-reduced-motion:no-preference){
+  .dot.live{animation:beat 2.6s ease-in-out infinite}
+}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.32}}
+
+/* --- grid ------------------------------------------------------ */
+.grid{display:grid;grid-template-columns:minmax(300px,1.05fr) 1fr;gap:14px}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{
+  background:var(--panel);
+  border:1px solid var(--rule);
+  padding:12px 13px 13px;
+}
+.card > .lbl{display:block;margin-bottom:9px}
+.stack{display:flex;flex-direction:column;gap:14px}
+
+/* --- rose ------------------------------------------------------ */
+.rose{width:100%;height:auto;display:block}
+.rose-note{
+  color:var(--muted);font-size:10.5px;margin-top:8px;line-height:1.5;
+}
+.key{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:10.5px;color:var(--muted)}
+.key i{width:8px;height:8px;display:inline-block;margin-right:5px;border-radius:50%}
+
+/* --- bars ------------------------------------------------------ */
+.rows{display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:74px 1fr 46px;align-items:center;gap:9px}
+.row span:first-child{color:var(--muted);font-size:11px}
+.track{height:11px;background:#161c22;position:relative;overflow:hidden}
+.fill{height:100%;background:var(--recede)}
+.fill.warm{background:var(--approach)}
+.fill.flat{background:var(--quiet)}
+.row b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums;font-size:11.5px}
+
+/* --- table ----------------------------------------------------- */
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
+th{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;
+  color:var(--muted);text-align:right;padding:0 9px 6px 0;white-space:nowrap;
+  border-bottom:1px solid var(--rule);
+}
+th:first-child,td:first-child{text-align:left}
+td{padding:5px 9px 5px 0;border-bottom:1px solid rgba(51,62,73,.42);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.warm{color:var(--approach)}
+.cool{color:var(--recede)}
+.dim{color:var(--muted)}
+
+/* --- messages -------------------------------------------------- */
+.msg{padding:16px 0;color:var(--muted);font-size:12px;line-height:1.6;max-width:60ch}
+.msg strong{color:var(--paper);font-weight:500}
+.foot{
+  margin-top:14px;padding-top:9px;border-top:1px solid var(--rule);
+  color:var(--muted);font-size:10px;display:flex;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Storm Motion <span>· Phase 1</span></h1>
+  <div class="stat"><i class="dot dead" id="dot"></i><span class="lbl">Last run</span><b id="lastRun">—</b></div>
+  <div class="stat"><span class="lbl">Cycles 48h</span><b id="nCycles">—</b></div>
+  <div class="stat"><span class="lbl">Detections</span><b id="nDet">—</b></div>
+</div>
+
+<div id="body"></div>
+
+<div class="foot">
+  <span>Diagnostic only · no scoring impact · log-only phase</span>
+  <span id="refreshed">—</span>
+</div>
+
+<script>
+/* =================================================================
+   CONFIG
+   ================================================================= */
+
+// Feature service URL, WITHOUT the trailing layer index. Get it from
+// the notebook:  gis.content.get(MOTION_LOG_ITEM_ID).url
+const SERVICE_URL = "https://services5.arcgis.com/eZ3AleDZdwnqtB9E/arcgis/rest/services/fwfs_moab_storm_motion_public/FeatureServer";
+
+const TABLE_INDEX   = 0;      // storm_motion sits at 0 (no layers in the service)
+const LOOKBACK_HOURS= 48;
+const REFRESH_MIN   = 5;
+const CYCLE_MIN     = 15;     // matcher cadence, for the cycle count
+const RING_KM       = [10,25,50];   // matches MOTION_BOX_KM = 50
+
+// Leave blank if the table is shared publicly. If it stays org-only,
+// paste a token, or append ?token=... to this page's URL.
+const TOKEN = "";
+
+/* ================================================================= */
+
+const $ = id => document.getElementById(id);
+const urlToken = new URLSearchParams(location.search).get("token") || TOKEN;
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function fmt(v,d=1){return (v===null||v===undefined||v==="")?"—":Number(v).toFixed(d);}
+function hhmm(ms){const t=new Date(ms);return String(t.getUTCHours()).padStart(2,"0")+":"+String(t.getUTCMinutes()).padStart(2,"0")+"Z";}
+
+async function load(){
+  if(SERVICE_URL.startsWith("PASTE")){
+    return show(`<div class="msg"><strong>Set the service URL.</strong><br>
+      Edit <code>SERVICE_URL</code> at the top of this file. Retrieve it from the
+      notebook with <code>gis.content.get(MOTION_LOG_ITEM_ID).url</code>.</div>`);
+  }
+  const since = new Date(Date.now()-LOOKBACK_HOURS*3600*1000)
+    .toISOString().slice(0,19).replace("T"," ");
+  const p = new URLSearchParams({
+    where:`run_ts >= timestamp '${since}'`,
+    outFields:"*", returnGeometry:"false",
+    orderByFields:"run_ts DESC", resultRecordCount:"1000", f:"json"
+  });
+  if(urlToken) p.set("token",urlToken);
+
+  let j;
+  try{
+    const r = await fetch(`${SERVICE_URL}/${TABLE_INDEX}/query?${p}`);
+    j = await r.json();
+  }catch(e){
+    return show(`<div class="msg"><strong>Could not reach the service.</strong><br>
+      ${esc(e.message)}</div>`);
+  }
+  if(j.error){
+    return show(`<div class="msg"><strong>The service returned an error.</strong><br>
+      ${esc(j.error.message||"")}<br><br>
+      If it mentions permissions, the table is still org-only — share it, or add
+      <code>?token=…</code> to this page's URL.</div>`);
+  }
+  render((j.features||[]).map(f=>f.attributes));
+  $("refreshed").textContent = "refreshed "+hhmm(Date.now());
+}
+
+function show(html){ $("body").innerHTML = html; }
+
+function render(rows){
+  if(!rows.length){
+    return show(`<div class="msg"><strong>No rows in the last ${LOOKBACK_HOURS} hours.</strong><br>
+      The matcher writes to this table every cycle, including quiet ones, so an
+      empty result means logging has not started. Check that
+      <code>MOTION_LOG_ITEM_ID</code> is set in the notebook.</div>`);
+  }
+
+  // --- headline ------------------------------------------------
+  const last = Math.max(...rows.map(r=>r.run_ts));
+  const ageMin = (Date.now()-last)/60000;
+  $("lastRun").textContent = hhmm(last)+"  "+(ageMin<90?`${Math.round(ageMin)}m`:`${(ageMin/60).toFixed(1)}h`);
+  $("dot").className = "dot "+(ageMin<CYCLE_MIN*2?"live":ageMin<CYCLE_MIN*6?"stale":"dead");
+
+  const cycles = new Set(rows.map(r=>Math.round(r.run_ts/60000))).size;
+  const det = rows.filter(r=>r.n_features>0);
+  $("nCycles").textContent = cycles;
+  $("nDet").textContent = det.length;
+
+  // --- latest cycle --------------------------------------------
+  const latest = rows.filter(r=>r.run_ts===last && r.n_features>0)
+                     .sort((a,b)=>(a.dist_km??1e9)-(b.dist_km??1e9));
+
+  // --- per-product detection rate ------------------------------
+  const prods = [...new Set(rows.map(r=>r.product).filter(Boolean))];
+  const byProd = prods.map(p=>{
+    const all = rows.filter(r=>r.product===p);
+    const hit = all.filter(r=>r.n_features>0).length;
+    return {p, hit, all:all.length, pct: all.length? hit/all.length : 0};
+  });
+
+  // --- speed distribution --------------------------------------
+  const matched = rows.filter(r=>r.matched===1 && r.speed_kmh!==null && r.speed_kmh!==undefined);
+  const BINS=[[0,2,"stationary"],[2,10,"2–10"],[10,20,"10–20"],
+              [20,30,"20–30"],[30,45,"30–45"],[45,1e9,"45+"]];
+  const hist = BINS.map(([lo,hi,lab])=>({
+    lab, n: matched.filter(r=>r.speed_kmh>=lo && r.speed_kmh<hi).length, lo
+  }));
+  const histMax = Math.max(1,...hist.map(h=>h.n));
+
+  const closing = matched.filter(r=>(r.closing_kmh??0)>0).length;
+  const dubious = matched.filter(r=>r.speed_kmh>60).length;
+
+  show(`
+    <div class="grid">
+      <div class="card">
+        <span class="lbl">Bearing &amp; range from basin</span>
+        ${rose(latest.length?latest:matched.slice(0,12))}
+        <div class="key">
+          <span><i style="background:var(--approach)"></i>closing</span>
+          <span><i style="background:var(--recede)"></i>receding</span>
+          <span><i style="background:var(--quiet)"></i>unmatched</span>
+        </div>
+        <div class="rose-note">Rings at ${RING_KM.join(", ")} km. Vector length scales with
+        speed; direction is the cell's own heading, not its bearing from the basin.</div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <span class="lbl">Detection rate, ${LOOKBACK_HOURS}h</span>
+          <div class="rows">
+            ${byProd.map(d=>`
+              <div class="row">
+                <span>${esc(d.p)}</span>
+                <div class="track"><div class="fill" style="width:${(d.pct*100).toFixed(1)}%"></div></div>
+                <b>${d.hit}/${d.all}</b>
+              </div>`).join("")}
+          </div>
+          <div class="rose-note">${byProd.length>1
+            ? "If one product consistently detects more, it is seeing cells the other misses — the question that decides which drives any future alert."
+            : "Only one product is reporting. Check the folder names in MOTION_PRODUCTS."}</div>
+        </div>
+
+        <div class="card">
+          <span class="lbl">Speed of matched features · km/h</span>
+          <div class="rows">
+            ${hist.map(h=>`
+              <div class="row">
+                <span>${esc(h.lab)}</span>
+                <div class="track"><div class="fill ${h.lo===0?"warm":"flat"}"
+                  style="width:${(h.n/histMax*100).toFixed(1)}%"></div></div>
+                <b>${h.n}</b>
+              </div>`).join("")}
+          </div>
+          <div class="rose-note">The stationary bin is the hazard case, not the safe one —
+          a cell parked over a drainage is the Moab flood signature. ${matched.length} matched,
+          ${closing} closing${dubious?`, <span class="warm">${dubious} above 60 km/h and likely false matches</span>`:""}.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <span class="lbl">Latest cycle · ${hhmm(last)}</span>
+      ${latest.length ? `<div class="scroll"><table>
+        <thead><tr>
+          <th>Product</th><th>#</th><th>Range km</th><th>Basin</th>
+          <th>Speed</th><th>Heading</th><th>Closing</th><th>ETA min</th>
+          <th>Area km²</th><th>Peak</th>
+        </tr></thead>
+        <tbody>${latest.map(r=>{
+          const c = r.closing_kmh;
+          const cls = c==null?"dim":c>0?"warm":"cool";
+          return `<tr>
+            <td>${esc(r.product||"")}</td>
+            <td class="dim">${r.feature_rank??""}</td>
+            <td>${fmt(r.dist_km,1)}</td>
+            <td class="dim">${esc(r.basin||"—")}</td>
+            <td>${r.matched?fmt(r.speed_kmh,1):'<span class="dim">—</span>'}</td>
+            <td>${r.matched?fmt(r.bearing_deg,0)+"°":'<span class="dim">—</span>'}</td>
+            <td class="${cls}">${fmt(c,1)}</td>
+            <td class="${cls}">${r.eta_min!=null?fmt(r.eta_min,0):'<span class="dim">—</span>'}</td>
+            <td class="dim">${fmt(r.area_km2,1)}</td>
+            <td class="dim">${fmt(r.peak_value,1)} ${esc(r.units||"")}</td>
+          </tr>`;}).join("")}</tbody></table></div>`
+      : `<div class="msg">Nothing above threshold this cycle. In dry weather that is the
+         correct reading — the log records quiet cycles too, which is what makes a
+         false-alarm rate computable later.</div>`}
+    </div>
+  `);
+}
+
+/* --- the signature: polar plot of features around the basin ------
+   Radius is range from the basin edge, angle is the reciprocal of
+   bearing_to_basin (the feature sits opposite the direction it would
+   travel to reach us). The vector is the cell's own heading.        */
+function rose(feats){
+  const S=340, C=S/2, R=C-30;
+  const rmax = Math.max(...RING_KM);
+  const rr = km => Math.min(km,rmax)/rmax*R;
+  const pt = (brg,km)=>{
+    const a=(brg-90)*Math.PI/180, d=rr(km);
+    return [C+Math.cos(a)*d, C+Math.sin(a)*d];
+  };
+  let s=`<svg class="rose" viewBox="0 0 ${S} ${S}" role="img"
+    aria-label="Detected storm features by bearing and range from the basin">`;
+
+  RING_KM.forEach(k=>{
+    s+=`<circle cx="${C}" cy="${C}" r="${rr(k)}" fill="none"
+        stroke="var(--rule)" stroke-width="1"/>`;
+    s+=`<text x="${C+3}" y="${C-rr(k)+11}" fill="var(--muted)"
+        font-size="9" font-family="IBM Plex Mono, monospace">${k}</text>`;
+  });
+  [["N",0],["E",90],["S",180],["W",270]].forEach(([lab,b])=>{
+    const [x1,y1]=pt(b,rmax*0.03),[x2,y2]=pt(b,rmax);
+    s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+        stroke="var(--rule)" stroke-width="1" stroke-dasharray="2 5"/>`;
+    const [tx,ty]=pt(b,rmax*1.16);
+    s+=`<text x="${tx}" y="${ty+3}" fill="var(--muted)" font-size="10"
+        text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif"
+        letter-spacing="1">${lab}</text>`;
+  });
+  s+=`<circle cx="${C}" cy="${C}" r="4.5" fill="var(--paper)"/>`;
+  s+=`<text x="${C}" y="${C+18}" fill="var(--muted)" font-size="9"
+      text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif"
+      letter-spacing="1.4">BASIN</text>`;
+
+  feats.forEach(f=>{
+    if(f.dist_km==null) return;
+    const away = ((f.bearing_to_basin_deg ?? 0)+180)%360;
+    const [x,y] = pt(away, f.dist_km);
+    const col = !f.matched ? "var(--quiet)"
+              : (f.closing_kmh??0)>0 ? "var(--approach)" : "var(--recede)";
+    if(f.matched && f.speed_kmh){
+      const len = 8+Math.min(f.speed_kmh,45)/45*30;
+      const a=(f.bearing_deg-90)*Math.PI/180;
+      const x2=x+Math.cos(a)*len, y2=y+Math.sin(a)*len;
+      s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${col}"
+          stroke-width="1.6" opacity=".85"/>`;
+      s+=`<circle cx="${x2}" cy="${y2}" r="2.4" fill="${col}"/>`;
+    }
+    const r = 3.5+Math.min(Math.sqrt(f.area_km2||1),6);
+    s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" opacity=".28"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`;
+  });
+  return s+"</svg>";
+}
+
+load();
+setInterval(load, REFRESH_MIN*60*1000);
+</script>
+</body>
+</html>
