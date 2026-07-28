@@ -168,6 +168,15 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 function fmt(v,d=1){return (v===null||v===undefined||v==="")?"—":Number(v).toFixed(d);}
 function hhmm(ms){const t=new Date(ms);return String(t.getUTCHours()).padStart(2,"0")+":"+String(t.getUTCMinutes()).padStart(2,"0")+"Z";}
 
+// Local Moab time. Uses the IANA zone rather than a fixed -6 offset so the
+// label stays correct through the MDT/MST changeover in November with no edit.
+// hourCycle h23 keeps midnight as 00:00 rather than 24:00.
+const _localFmt = new Intl.DateTimeFormat("en-US",{
+  timeZone:"America/Denver", hour:"2-digit", minute:"2-digit",
+  hourCycle:"h23", timeZoneName:"short"
+});
+function stamp(ms){ return `${hhmm(ms)} (${_localFmt.format(new Date(ms))})`; }
+
 async function load(){
   if(SERVICE_URL.startsWith("PASTE")){
     return show(`<div class="msg"><strong>Set the service URL.</strong><br>
@@ -198,7 +207,7 @@ async function load(){
       <code>?token=…</code> to this page's URL.</div>`);
   }
   render((j.features||[]).map(f=>f.attributes));
-  $("refreshed").textContent = "refreshed "+hhmm(Date.now());
+  $("refreshed").textContent = "refreshed "+stamp(Date.now());
 }
 
 function show(html){ $("body").innerHTML = html; }
@@ -214,7 +223,7 @@ function render(rows){
   // --- headline ------------------------------------------------
   const last = Math.max(...rows.map(r=>r.run_ts));
   const ageMin = (Date.now()-last)/60000;
-  $("lastRun").textContent = hhmm(last)+"  "+(ageMin<90?`${Math.round(ageMin)}m`:`${(ageMin/60).toFixed(1)}h`);
+  $("lastRun").textContent = stamp(last)+"  "+(ageMin<90?`${Math.round(ageMin)}m`:`${(ageMin/60).toFixed(1)}h`);
   $("dot").className = "dot "+(ageMin<CYCLE_MIN*2?"live":ageMin<CYCLE_MIN*6?"stale":"dead");
 
   const cycles = new Set(rows.map(r=>Math.round(r.run_ts/60000))).size;
@@ -295,7 +304,7 @@ function render(rows){
     </div>
 
     <div class="card" style="margin-top:14px">
-      <span class="lbl">Latest cycle · ${hhmm(last)}</span>
+      <span class="lbl">Latest cycle · ${stamp(last)}</span>
       ${latest.length ? `<div class="scroll"><table>
         <thead><tr>
           <th>Product</th><th>#</th><th>Range km</th><th>Basin</th>
