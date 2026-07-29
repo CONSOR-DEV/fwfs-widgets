@@ -156,6 +156,14 @@ const REFRESH_MIN   = 5;
 const CYCLE_MIN     = 15;     // matcher cadence, for the cycle count
 const RING_KM       = [10,25,50];   // matches MOTION_BOX_KM = 50
 
+// Range on this plot is measured to the nearest point on the BASIN BOUNDARY,
+// not to the watershed centroid — that is what the logger computes, and it is
+// the number that matters, since rain starts falling on the basin when a cell
+// reaches the edge. Measured 2026-07-28, the boundary lies this far from the
+// centroid depending on direction. Shown so a range here can be reconciled with
+// rings drawn around the centroid on a map.
+const EDGE_FROM_CENTRE_KM = [12.5, 19.2];
+
 // Leave blank if the table is shared publicly. If it stays org-only,
 // paste a token, or append ?token=... to this page's URL.
 const TOKEN = "";
@@ -259,7 +267,15 @@ function render(rows){
     const others = mv.filter(o=>o!==r).map(o=>o.bearing_deg);
     if(others.length<2) return;
     r._off = angDiff(r.bearing_deg, meanBearing(others));
-    r._odd = r._off>120 && medSpeed && r.speed_kmh > 1.6*medSpeed;
+    // Two independent signatures of a bad match. Reversal: heading against the
+    // flow at above ambient speed. Overspeed: far faster than everything else
+    // in the same airmass, which a real cell cannot be even when its direction
+    // looks reasonable — the absolute floor keeps a slow, quiet day from
+    // flagging ordinary spread around a small median.
+    const rev  = r._off>120 && medSpeed && r.speed_kmh > 1.6*medSpeed;
+    const fast = medSpeed && r.speed_kmh > 2.5*medSpeed && r.speed_kmh > 35;
+    r._odd = rev || fast;
+    r._why = rev ? "reversed" : fast ? "overspeed" : null;
   });
   const odd = mv.filter(r=>r._odd);
 
@@ -293,8 +309,12 @@ function render(rows){
           <span><i style="background:var(--recede)"></i>receding</span>
           <span><i style="background:var(--quiet)"></i>unmatched</span>
         </div>
-        <div class="rose-note">Rings at ${RING_KM.join(", ")} km. Vector length scales with
-        speed; direction is the cell's own heading, not its bearing from the basin.</div>
+        <div class="rose-note">Rings are ${RING_KM.join(", ")} km <b>from the basin
+        boundary</b>, not from its centre. The boundary lies
+        ${EDGE_FROM_CENTRE_KM[0]}–${EDGE_FROM_CENTRE_KM[1]} km out from the watershed
+        midpoint depending on direction, so a feature at 20 km here sits roughly
+        33–39 km from centroid rings drawn on a map. Vector length scales with speed;
+        its direction is the cell's own heading, not its bearing from the basin.</div>
       </div>
 
       <div class="stack">
@@ -345,7 +365,7 @@ function render(rows){
           const newWin = i>0 && latest[i-1].frame_curr!==r.frame_curr;
           return `<tr${newWin?' style="border-top:1px solid var(--rule)"':""}>
             <td class="dim">${r.frame_curr?hhmm(r.frame_curr):"—"}</td>
-            <td>${esc(r.product||"")}${r._odd?' <span class="susp">suspect</span>':""}</td>
+            <td>${esc(r.product||"")}${r._odd?` <span class="susp">${r._why}</span>`:""}</td>
             <td>${fmt(r.dist_km,1)}</td>
             <td class="dim">${esc(r.basin||"—")}</td>
             <td>${r.matched?fmt(r.speed_kmh,1):'<span class="dim">—</span>'}</td>
@@ -390,7 +410,7 @@ function rose(feats){
     s+=`<circle cx="${C}" cy="${C}" r="${rr(k)}" fill="none"
         stroke="var(--rule)" stroke-width="1"/>`;
     s+=`<text x="${C+3}" y="${C-rr(k)+11}" fill="var(--muted)"
-        font-size="9" font-family="IBM Plex Mono, monospace">${k}</text>`;
+        font-size="9" font-family="IBM Plex Mono, monospace">${k}${k===rmax?" km":""}</text>`;
   });
   [["N",0],["E",90],["S",180],["W",270]].forEach(([lab,b])=>{
     const [x1,y1]=pt(b,rmax*0.03),[x2,y2]=pt(b,rmax);
@@ -404,7 +424,7 @@ function rose(feats){
   s+=`<circle cx="${C}" cy="${C}" r="4.5" fill="var(--paper)"/>`;
   s+=`<text x="${C}" y="${C+18}" fill="var(--muted)" font-size="9"
       text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif"
-      letter-spacing="1.4">BASIN</text>`;
+      letter-spacing="1.4">BASIN EDGE</text>`;
 
   feats.forEach(f=>{
     if(f.dist_km==null) return;
