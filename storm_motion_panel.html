@@ -247,7 +247,7 @@ const SERVICE_URL = "https://services5.arcgis.com/eZ3AleDZdwnqtB9E/arcgis/rest/s
 
 const TABLE_INDEX   = 0;      // storm_motion sits at 0 (no layers in the service)
 const LOOKBACK_HOURS= 48;
-const REFRESH_MIN   = 5;
+const REFRESH_MIN   = 2;
 const CYCLE_MIN     = 15;     // matcher cadence, for the cycle count
 // Rings in MILES. The search box is 50 km (31 mi), so 30 mi is its edge.
 const RING_MI       = [5,15,30];
@@ -332,6 +332,11 @@ function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.
   return s.length%2?s[m]:(s[m-1]+s[m])/2;}
 function meanBearing(bs){let x=0,y=0;bs.forEach(b=>{const r=b*Math.PI/180;
   x+=Math.sin(r);y+=Math.cos(r);});return (Math.atan2(x,y)*180/Math.PI+360)%360;}
+// Resultant length, 0..1. Near 1 the other cells agree on a direction, so
+// "against the flow" is a meaningful statement. Near 0 they disagree with each
+// other and there is no flow to be against -- flag nothing in that case.
+function coherence(bs){let x=0,y=0;bs.forEach(b=>{const r=b*Math.PI/180;
+  x+=Math.sin(r);y+=Math.cos(r);});return Math.hypot(x,y)/Math.max(bs.length,1);}
 function angDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
 
 async function load(){
@@ -432,18 +437,30 @@ function render(rows){
   // reversed. Leave-one-out, so the outliers cannot define the mean they are
   // measured against.
   const mv = latest.filter(r=>r.matched===1 && r.bearing_deg!=null);
-  const medSpeed = median(mv.map(r=>r.speed_kmh));
+  const medSpeed = median(mv.map(r=>mph(r.speed_kmh)));      // mph throughout
   mv.forEach(r=>{
+    const spd = mph(r.speed_kmh);
     const others = mv.filter(o=>o!==r).map(o=>o.bearing_deg);
     if(others.length<2) return;
     r._off = angDiff(r.bearing_deg, meanBearing(others));
-    // Two independent signatures of a bad match. Reversal: heading against the
-    // flow at above ambient speed. Overspeed: far faster than everything else
-    // in the same airmass, which a real cell cannot be even when its direction
-    // looks reasonable — the absolute floor keeps a slow, quiet day from
-    // flagging ordinary spread around a small median.
-    const rev  = r._off>120 && medSpeed && r.speed_kmh > 1.6*medSpeed;
-    const fast = medSpeed && r.speed_kmh > 2.5*medSpeed && r.speed_kmh > 35;
+    r._coh = coherence(others);
+
+    // REVERSAL. Heading against a coherent field is strong evidence by itself,
+    // so this no longer also demands above-ambient speed. That extra condition
+    // let a 16 mph cell heading SSW through four NE movers pass unflagged on
+    // 2026-07-29, and it became the headline "1 closing, 55 min out".
+    // Two guards remain, both about whether the question is well posed at all:
+    //   spd > 5    below this a centroid shifts less than one MRMS cell between
+    //              frames, so its bearing is jitter rather than direction
+    //   coh > 0.7  the other cells must actually agree on a flow before
+    //              "against the flow" carries any meaning
+    const rev  = r._off > 120 && spd > 5 && r._coh > 0.7;
+
+    // OVERSPEED. Far faster than everything else in the same airmass, even when
+    // the direction looks plausible. The absolute floor stops a quiet day with a
+    // tiny median from flagging ordinary spread.
+    const fast = medSpeed && spd > 2.5*medSpeed && spd > 22;
+
     r._odd = rev || fast;
     r._why = rev ? "reversed" : fast ? "overspeed" : null;
   });
@@ -543,7 +560,8 @@ function render(rows){
           return `<tr${newWin?' style="border-top:1px solid var(--rule)"':""}>
             <td class="dim">${r.frame_curr?hhmm(r.frame_curr):"—"}</td>
             <td>${esc(r.product||"")}${r._odd
-                 ?` <span class="susp">${r._why}</span>`:""}</td>
+                 ?` <span class="susp">${r._why}${r._why==="reversed"
+                   ?` ${fmt(r._off,0)}\u00B0`:""}</span>`:""}</td>
             <td>${r.in_basin===1
                  ?'<span class="warm">over basin</span>'
                  :`${fmt(mi(r.dist_km),1)} mi <span class="dim">${where}</span>`}</td>
