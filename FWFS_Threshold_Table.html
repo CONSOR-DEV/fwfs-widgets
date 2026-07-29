@@ -87,6 +87,7 @@
   td{ border-right:1px solid var(--line); }
   td:last-child{ border-right:none; }
   tr:last-child td{ border-bottom:none; }
+  td .alt{ display:block; margin-top:4px; font-size:12px; color:var(--ink-soft); }
 
   /* per-tier column accents: thin top keyline echoing the legend */
   td.c0{ box-shadow:inset 0 3px 0 var(--t0); }
@@ -171,8 +172,8 @@
     <div class="eyebrow">Grand County Flood Warning &amp; Forecast System</div>
     <h1>How FWFS Scores Flood Threat</h1>
     <p class="subtitle">Every data product below is scored 0&ndash;4 against the Mill Creek
-    basin on its own thresholds. The dashboard combines these scores into one
-    overall threat posture for each outlook window.</p>
+    and Castle Creek basins on its own thresholds. The dashboard combines these scores
+    into one overall threat posture for each outlook window.</p>
   </header>
 
   <div class="tiers" aria-hidden="false">
@@ -197,96 +198,108 @@
     </thead>
     <tbody>
 
-      <tr>
-        <td class="product">Excessive Rainfall Outlook (ERO)
-          <span class="src">WPC &middot; all time scales</span>
+      <tr class="new-row">
+        <td class="product">Excessive Rainfall Outlook (ERO)<span class="new-pill">Updated</span>
+          <span class="src">WPC &middot; Day 1 / 2 / 3 &middot; distance from the basin to each
+          graded outlook polygon</span>
           <span class="tag">Outlook</span></td>
-        <td class="c0">&gt;75 miles outside of MRGL</td>
-        <td class="c1">25&ndash;75 miles outside of MRGL</td>
-        <td class="c2">Basin inside MRGL</td>
-        <td class="c3">Basin inside SLGT</td>
-        <td class="c4">Basin inside MDT or higher</td>
+        <td class="c0">Nearest Marginal area more than 75 miles away, or no outlook issued</td>
+        <td class="c1">Marginal area within 75 miles of the basin but not covering it</td>
+        <td class="c2">Basin inside a Marginal area</td>
+        <td class="c3">Basin inside a Slight area</td>
+        <td class="c4">Basin inside a Moderate or High area</td>
       </tr>
 
-      <tr>
-        <td class="product">Convective Outlook
-          <span class="src">Storm Prediction Center &middot; all time scales</span>
+      <tr class="new-row">
+        <td class="product">Convective Outlook<span class="new-pill">Updated</span>
+          <span class="src">Storm Prediction Center &middot; Day 1 / 2 / 3 &middot; each risk
+          category scores lower the farther its area sits from the basin</span>
           <span class="tag">Outlook</span></td>
-        <td class="c0">Outside general thunderstorm area (&ge;100 miles)</td>
-        <td class="c1">In general thunderstorm area</td>
-        <td class="c2">In Slight Risk or near Slight (&le;50 miles)</td>
-        <td class="c3">Enhanced</td>
-        <td class="c4">Moderate and above</td>
+        <td class="c0">No risk area within 100 miles, and no general thunderstorm area over the basin</td>
+        <td class="c1">General thunderstorms over the basin, Marginal within 50 miles, or Slight 50&ndash;100 miles out</td>
+        <td class="c2">Slight Risk within 50 miles, or Enhanced 50&ndash;100 miles out</td>
+        <td class="c3">Enhanced Risk within 50 miles, or Moderate / High 50&ndash;100 miles out</td>
+        <td class="c4">Moderate or High Risk within 50 miles</td>
       </tr>
 
-      <tr>
-        <td class="product">WPC Quantitative Precipitation Forecast (QPF)
-          <span class="src">All time scales &middot; 24-hour amounts</span>
+      <tr class="new-row">
+        <td class="product">WPC Quantitative Precipitation Forecast (QPF)<span class="new-pill">Updated</span>
+          <span class="src">Day 1 / 2 / 3 &middot; 24-hour amounts &middot; highest forecast
+          band that overlaps the basin at all</span>
           <span class="tag">Forecast</span></td>
-        <td class="c0">&lt;0.25&quot; basin average</td>
-        <td class="c1">0.25&ndash;0.50&quot; basin average</td>
-        <td class="c2">0.50&ndash;1.0&quot; with at least partial basin coverage</td>
-        <td class="c3">1.0&ndash;2.0&quot; maxima within basin</td>
-        <td class="c4">&gt;2.0&quot; maxima within basin</td>
+        <td class="c0">Highest overlapping band below 0.25&quot;</td>
+        <td class="c1">0.25&ndash;0.49&quot; band overlaps the basin</td>
+        <td class="c2">0.50&ndash;0.99&quot; band overlaps the basin</td>
+        <td class="c3">1.0&ndash;1.99&quot; band overlaps the basin</td>
+        <td class="c4">2.0&quot; band or higher overlaps the basin</td>
       </tr>
 
       <tr>
         <td class="product">NWS Watch/Warn + AFD
           <span class="src">Grand Junction WFO products &middot; scores 1&ndash;2 from forecast
-          discussion language, 3&ndash;4 from active watch/warning products</span>
+          discussion language; 3&ndash;4 from active watch/warning products, with warning
+          polygons graded against the true basin boundaries</span>
           <span class="tag">Alert</span></td>
-        <td class="c0">No watches or relevant forecast discussion language</td>
+        <td class="c0">No watches or warnings, and no relevant forecast discussion language</td>
         <td class="c1">AFD mentions rain showers possible but heavy rain unlikely</td>
         <td class="c2">AFD mentions &ldquo;heavy rain possible&rdquo; or &ldquo;flash flood potential&rdquo; without watches</td>
-        <td class="c3">Flash Flood Watch / Flood Watch issued for basin or county (or nearby)
+        <td class="c3">Flash Flood Watch / Flood Watch valid for the window
+          <span class="alt">or a Flash Flood / Flood Warning polygon within 5 miles of a basin boundary</span>
           <span class="floor">Sets overall floor</span></td>
-        <td class="c4">Active Flash Flood Warning or Flood Warning for basin (within 5-mile buffer)
+        <td class="c4">Flash Flood Warning or Flood Warning polygon <b>touching or overlapping</b> a basin boundary
           <span class="floor">Sets overall floor</span></td>
-      </tr>
-
-      <tr>
-        <td class="product">NDFD QPF &mdash; Short Range
-          <span class="src">GJT forecaster grids &middot; next 6&ndash;12 hours &middot; mean of 3 basin points</span>
-          <span class="tag">Forecast</span></td>
-        <td class="c0">&lt;0.10&quot; within basin in the next 6&ndash;12 hours</td>
-        <td class="c1">0.10&ndash;0.25&quot; within basin in the next 6&ndash;12 hours</td>
-        <td class="c2">0.26&ndash;0.50&quot; within basin in the next 6&ndash;12 hours</td>
-        <td class="c3">0.51&ndash;0.75&quot; within basin in the next 6&ndash;12 hours</td>
-        <td class="c4">&ge;0.75&quot; within basin in the next 6+ hours</td>
       </tr>
 
       <tr class="new-row">
-        <td class="product">NDFD QPF &mdash; Day 2 / Day 3<span class="new-pill">New</span>
+        <td class="product">HRRR QPF &mdash; Short Range (GRIB2)<span class="new-pill">Updated</span>
+          <span class="src">NOAA HRRR read directly from GRIB2 &middot; next 6&ndash;12 hours &middot;
+          every 3&nbsp;km model cell inside the basin union (56 cells)</span>
+          <span class="tag">Forecast</span></td>
+        <td class="c0">&lt;0.10&quot; basin mean
+          <span class="alt">and no corroborated cell &ge;0.20&quot;</span></td>
+        <td class="c1">0.10&ndash;0.25&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.20&quot;</span></td>
+        <td class="c2">0.26&ndash;0.50&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.40&quot;</span></td>
+        <td class="c3">0.51&ndash;0.75&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.75&quot;</span></td>
+        <td class="c4">&ge;0.75&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;1.25&quot;</span></td>
+      </tr>
+
+      <tr>
+        <td class="product">NDFD QPF &mdash; Day 2 / Day 3
           <span class="src">GJT forecaster grids &middot; local calendar-day totals &middot;
-          3 basin points (uses the WPC 24-hour bands)</span>
+          32 points across the basin union (uses the WPC 24-hour bands)</span>
           <span class="tag">Forecast</span></td>
         <td class="c0">&lt;0.25&quot; basin mean for the day</td>
         <td class="c1">0.25&ndash;0.50&quot; basin mean for the day</td>
         <td class="c2">0.50&ndash;1.0&quot; basin mean for the day</td>
-        <td class="c3">1.0&ndash;2.0&quot; maxima at any basin point</td>
-        <td class="c4">&gt;2.0&quot; maxima at any basin point</td>
+        <td class="c3">1.0&ndash;2.0&quot; maxima within the basin</td>
+        <td class="c4">&gt;2.0&quot; maxima within the basin</td>
       </tr>
 
       <tr>
         <td class="product">Precipitable Water (PWAT)
-          <span class="src">Sounding-based atmospheric moisture</span>
+          <span class="src">Total atmospheric moisture over the basin area</span>
           <span class="tag">Forecast</span></td>
-        <td class="c0">&lt;0.6&quot;</td>
-        <td class="c1">0.6&ndash;0.74&quot;</td>
+        <td class="c0">&lt;0.60&quot;</td>
+        <td class="c1">0.60&ndash;0.74&quot;</td>
         <td class="c2">0.75&ndash;0.89&quot;</td>
         <td class="c3">0.90&ndash;1.10&quot;</td>
         <td class="c4">&gt;1.10&quot;</td>
       </tr>
 
-      <tr>
-        <td class="product">MRMS Radar QPE
-          <span class="src">Radar-only 1-hour rainfall estimate over basin</span>
+      <tr class="new-row">
+        <td class="product">MRMS Radar QPE<span class="new-pill">Updated</span>
+          <span class="src">Radar-only 1-hour rainfall estimate &middot; wettest single
+          radar cell anywhere inside the basin union (~520 cells)</span>
           <span class="tag">Observation</span></td>
-        <td class="c0">&lt;0.10&quot; (1 hr) over basin</td>
-        <td class="c1">0.10&ndash;0.25&quot; (1 hr) over basin</td>
-        <td class="c2">0.26&ndash;0.50&quot; (1 hr) over basin</td>
-        <td class="c3">0.51&ndash;0.75&quot; (1 hr) over basin</td>
-        <td class="c4">&gt;0.75&quot; (1 hr) over basin</td>
+        <td class="c0">&lt;0.10&quot; in the wettest cell</td>
+        <td class="c1">0.10&ndash;0.24&quot; in the wettest cell</td>
+        <td class="c2">0.25&ndash;0.49&quot; in the wettest cell</td>
+        <td class="c3">0.50&ndash;0.74&quot; in the wettest cell</td>
+        <td class="c4">&ge;0.75&quot; in the wettest cell</td>
       </tr>
 
     </tbody>
@@ -301,12 +314,12 @@
       <div class="horizon">Rolling 6-hour window from now</div>
       <div class="chips">
         <span class="chip">NWS Watch/Warn + AFD <b>3.0</b></span>
-        <span class="chip">NDFD QPF 6-hr <b>3.0</b></span>
+        <span class="chip">HRRR QPF 6-hr <b>3.0</b></span>
         <span class="chip">MRMS Radar QPE <b>2.0</b></span>
         <span class="chip">PWAT <b>1.5</b></span>
       </div>
       <p>Built from the products that matter when flooding could begin within
-      hours. Official alerts and the short-fuse NDFD rainfall forecast carry
+      hours. Official alerts and the short-fuse HRRR rainfall forecast carry
       the most weight, radar-observed rainfall shows where heavy rain is
       already falling, and atmospheric moisture flags whether storms can rain
       efficiently. Longer-range outlooks are deliberately excluded at this
@@ -317,7 +330,7 @@
       <h3>6&ndash;24 Hour (Day 1)</h3>
       <div class="horizon">Rolling window covering the rest of today</div>
       <div class="chips">
-        <span class="chip">NDFD QPF 12-hr <b>3.0</b></span>
+        <span class="chip">HRRR QPF 12-hr <b>3.0</b></span>
         <span class="chip">NWS Watch/Warn + AFD <b>3.0</b></span>
         <span class="chip">PWAT <b>1.5</b></span>
         <span class="chip">ERO <b>1.0</b></span>
@@ -342,9 +355,10 @@
       </div>
       <p>Blends the flash-flood-focused ERO with tomorrow's forecast rainfall
       from both the local NDFD grids and national WPC guidance, plus
-      thunderstorm potential from SPC. Watches and warnings carry no weight at
-      this range; if one is ever issued whose valid period genuinely reaches
-      Day 2, it raises the level through the floor instead.</p>
+      thunderstorm potential from SPC. HRRR does not reach reliably this far
+      out, so the daily windows stay on NDFD. Watches and warnings carry no
+      weight at this range; if one is ever issued whose valid period genuinely
+      reaches Day 2, it raises the level through the floor instead.</p>
     </div>
 
     <div class="win">
@@ -369,21 +383,46 @@
     <p><b>Weighted blend.</b> Each window's product scores are multiplied by the
     weights shown above and averaged, so no single soft signal can flip a quiet
     day on its own. The result maps back to the five threat categories.</p>
-    <p><b>Watches and warnings set a floor.</b> An active Flood Watch forces the affected
-    window to at least HIGH, and an active Flood or Flash Flood Warning forces at least
-    CRITICAL, regardless of how quiet the other products are. Watches apply only to the
-    windows their valid times actually cover &mdash; a watch for today does not raise the
-    Day 2 or Day 3 outlook.</p>
+    <p><b>Warnings are graded by distance from the basin.</b> A Flash Flood or Flood
+    Warning polygon that touches or overlaps a basin boundary forces that window to
+    CRITICAL. A warning polygon within 5 miles of a boundary forces HIGH &mdash; close
+    enough to matter, but not yet over the watershed. Beyond 5 miles a warning sets no
+    floor at all and the other products stand on their own. Mill Creek and Castle Creek
+    are tested independently, and the nearest-miss distance is recorded either way.</p>
+    <p><b>Watches set a floor too.</b> An active Flood Watch or Flash Flood Watch forces the
+    affected window to at least HIGH. Watches apply only to the windows their valid times
+    actually cover &mdash; a watch for today does not raise the Day 2 or Day 3 outlook.</p>
     <p><b>AFD language informs, but does not override.</b> Plain-language signals from the
     Grand Junction forecast discussion (scores 1&ndash;2) feed the blend and the NWS
     Watch/Warn + AFD indicator, but only actual watch and warning products can force
     the overall level upward.</p>
+    <p><b>Outlooks score on distance, not just containment.</b> The national ERO and SPC
+    outlooks are drawn at a scale far larger than these watersheds, so an outlook edge a
+    few miles away still says something about the day. Both products therefore score a
+    nearby area at a reduced level rather than ignoring it &mdash; but SPC's General
+    Thunderstorm and Marginal categories get no distance grace beyond 50 miles, since a
+    broad low-end area two counties away is not information about Mill Creek.</p>
+    <p><b>&ldquo;Corroborated cell&rdquo; means more than one.</b> The short-range HRRR forecast
+    scores on either the basin average or a wet cell anywhere in the basin, so a
+    concentrated storm core over the headwaters is not averaged away. To avoid a single
+    stray model cell setting the tone, the trigger uses the <i>second</i>-wettest cell &mdash;
+    a real storm core covers several 3&nbsp;km cells, an artifact covers one.</p>
+    <p><b>Rainfall intensity can raise a level on its own.</b> If the model forecasts an
+    unusually wet single hour inside the window &mdash; 0.50&quot; in an hour for Monitor,
+    0.75&quot; for Elevated &mdash; that sets a minimum level even when the totals above stay
+    low. Short, intense bursts are what drive flash flooding in these basins.</p>
+    <p><b>Observed radar scores the wettest cell, not the average.</b> A Moab convective core
+    routinely covers under 5% of a watershed, so a basin average would hide it. This is
+    also why a CRITICAL radar tier can sit beside rain gauges reading 0.00 &mdash; with only
+    a handful of gauges across roughly 500 km&sup2;, the expected number that catch a core
+    that small is well under one. The dashboard reports how many radar cells made up the
+    core so the two readings can be reconciled at a glance.</p>
     <p><b>Day 3 note.</b> NDFD rainfall grids extend about 72 hours, so the Day 3 daily
     total can exclude the final early-morning hours of that day. Coverage is tracked
     and displayed with the data.</p>
   </div>
 
-  <footer>Grand County OEM &middot; FWFS / Project Nightlight &middot; Thresholds current as of June 2026</footer>
+  <footer>Grand County OEM &middot; FWFS / Project Nightlight &middot; Thresholds current as of July 2026</footer>
 
 </div>
 </body>
