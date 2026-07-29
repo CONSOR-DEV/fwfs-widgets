@@ -113,6 +113,9 @@ tr:last-child td{border-bottom:none}
 .warm{color:var(--approach)}
 .cool{color:var(--recede)}
 .dim{color:var(--muted)}
+.verdict{font-size:13.5px;line-height:1.5;color:var(--paper);margin:-2px 0 12px;
+  padding-bottom:11px;border-bottom:1px solid var(--rule)}
+.verdict b{font-weight:600}
 .susp{color:#b8734a;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-family:"IBM Plex Sans Condensed",sans-serif}
 
 /* --- messages -------------------------------------------------- */
@@ -148,13 +151,14 @@ tr:last-child td{border-bottom:none}
 
 // Feature service URL, WITHOUT the trailing layer index. Get it from
 // the notebook:  gis.content.get(MOTION_LOG_ITEM_ID).url
-const SERVICE_URL = "https://services5.arcgis.com/eZ3AleDZdwnqtB9E/arcgis/rest/services/fwfs_moab_storm_motion_public/FeatureServer";
+const SERVICE_URL = "PASTE_SERVICE_URL_HERE";
 
 const TABLE_INDEX   = 0;      // storm_motion sits at 0 (no layers in the service)
 const LOOKBACK_HOURS= 48;
 const REFRESH_MIN   = 5;
 const CYCLE_MIN     = 15;     // matcher cadence, for the cycle count
-const RING_KM       = [10,25,50];   // matches MOTION_BOX_KM = 50
+// Rings in MILES. The search box is 50 km (31 mi), so 30 mi is its edge.
+const RING_MI       = [5,15,30];
 
 // Range on this plot is measured to the nearest point on the BASIN BOUNDARY,
 // not to the watershed centroid — that is what the logger computes, and it is
@@ -163,6 +167,13 @@ const RING_KM       = [10,25,50];   // matches MOTION_BOX_KM = 50
 // centroid depending on direction. Shown so a range here can be reconciled with
 // rings drawn around the centroid on a map.
 const EDGE_FROM_CENTRE_KM = [12.5, 19.2];
+
+// Watershed centroid, measured from the basin cell index 2026-07-28. Used only
+// as a FALLBACK for rows whose bearing_to_basin_deg is null — every unmatched
+// feature logged before the 2026-07-29 notebook fix. Bearing from the centroid
+// and bearing from the nearest edge differ negligibly for a cell several miles
+// out, which is the only case this fallback has to cover.
+const BASIN_CENTRE = [38.5264, -109.3624];
 
 // Leave blank if the table is shared publicly. If it stays org-only,
 // paste a token, or append ?token=... to this page's URL.
@@ -185,6 +196,43 @@ const _localFmt = new Intl.DateTimeFormat("en-US",{
   hourCycle:"h23", timeZoneName:"short"
 });
 function stamp(ms){ return `${hhmm(ms)} (${_localFmt.format(new Date(ms))})`; }
+
+// The log stores SI, because that is what MRMS publishes and what the season
+// analysis should run on. Everything below converts at DISPLAY time only, so
+// the archive stays in the units the instruments actually report.
+const MI = 0.621371, MI2 = 0.386102, IN = 1/25.4;
+const mi   = km  => km ==null?null:km *MI;
+const mph  = kmh => kmh==null?null:kmh*MI;
+const mi2  = km2 => km2==null?null:km2*MI2;
+
+const COMPASS=["N","NNE","NE","ENE","E","ESE","SE","SSE",
+               "S","SSW","SW","WSW","W","WNW","NW","NNW"];
+function bearingDeg(la1,lo1,la2,lo2){
+  const p=Math.PI/180;
+  const y=Math.sin((lo2-lo1)*p)*Math.cos(la2*p);
+  const x=Math.cos(la1*p)*Math.sin(la2*p)
+         -Math.sin(la1*p)*Math.cos(la2*p)*Math.cos((lo2-lo1)*p);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+// Bearing FROM the basin TO the feature — i.e. where the cell sits. Returns
+// null rather than guessing: defaulting a missing bearing to 0 is what drew
+// every newly formed cell due south of the basin no matter where it was.
+function bearingFromBasin(f){
+  if(f.bearing_to_basin_deg!=null) return (f.bearing_to_basin_deg+180)%360;
+  if(f.cent_lat!=null && f.cent_lon!=null)
+    return bearingDeg(BASIN_CENTRE[0],BASIN_CENTRE[1],f.cent_lat,f.cent_lon);
+  return null;
+}
+function compass(deg){
+  if(deg==null) return "—";
+  return COMPASS[Math.round((((deg%360)+360)%360)/22.5)%16];
+}
+// peak_value is mm/hr for the rate product and dBZ for reflectivity, so the
+// conversion has to key off the logged units rather than assume.
+function peak(v,u){
+  if(v==null) return "—";
+  return (u==="mm/hr") ? `${(v*IN).toFixed(2)} in/hr` : `${v.toFixed(0)} ${u||""}`;
+}
 
 // Circular statistics for the ambient-flow check below. A plain arithmetic mean
 // of bearings is wrong across the 0/360 wrap, so use the resultant vector.
@@ -228,6 +276,36 @@ async function load(){
 }
 
 function show(html){ $("body").innerHTML = html; }
+
+// One sentence answering the only question that matters at a glance. Written
+// before any chart, because a reader should not have to decode a polar plot to
+// learn that nothing is happening.
+function verdict(latest){
+  if(!latest.length)
+    return `<b>Nothing above threshold.</b> No cells detected within
+            ${Math.max(...RING_MI)} mi of the basin this cycle.`;
+  const real   = latest.filter(r=>!r._odd);
+  const inb    = real.filter(r=>r.in_basin===1);
+  const close  = real.filter(r=>(r.closing_kmh??0)>0)
+                     .sort((a,b)=>(a.eta_min??1e9)-(b.eta_min??1e9));
+  const near   = real.length?real[0]:latest[0];
+  const n      = latest.length;
+  const cells  = `${n} cell${n===1?"":"s"} tracked`;
+
+  if(inb.length) return `<b class="warm">${inb.length} cell${inb.length===1?"":"s"}
+    over the basin.</b> ${cells} this cycle.`;
+  if(close.length){
+    const c = close[0];
+    const eta = c.eta_min!=null && c.eta_min<180
+      ? ` about <b class="warm">${Math.round(c.eta_min)} min</b> out`
+      : " but only slowly";
+    return `<b class="warm">${close.length} closing.</b> Nearest is
+      ${fmt(mi(c.dist_km),1)} mi ${compass(bearingFromBasin(c))},
+      gaining ${fmt(mph(c.closing_kmh),0)} mph,${eta}. ${cells}.`;
+  }
+  return `<b>Nothing closing.</b> ${cells}; nearest ${fmt(mi(near.dist_km),1)} mi
+    ${compass(bearingFromBasin(near))}, all moving away or across.`;
+}
 
 function render(rows){
   if(!rows.length){
@@ -289,32 +367,39 @@ function render(rows){
 
   // --- speed distribution --------------------------------------
   const matched = rows.filter(r=>r.matched===1 && r.speed_kmh!==null && r.speed_kmh!==undefined);
-  const BINS=[[0,2,"stationary"],[2,10,"2–10"],[10,20,"10–20"],
-              [20,30,"20–30"],[30,45,"30–45"],[45,1e9,"45+"]];
+  const BINS=[[0,1,"stationary"],[1,5,"1–5"],[5,12,"5–12"],
+              [12,20,"12–20"],[20,30,"20–30"],[30,1e9,"30+"]];
   const hist = BINS.map(([lo,hi,lab])=>({
-    lab, n: matched.filter(r=>r.speed_kmh>=lo && r.speed_kmh<hi).length, lo
+    lab, n: matched.filter(r=>mph(r.speed_kmh)>=lo && mph(r.speed_kmh)<hi).length, lo
   }));
   const histMax = Math.max(1,...hist.map(h=>h.n));
 
   const closing = matched.filter(r=>(r.closing_kmh??0)>0).length;
-  const dubious = matched.filter(r=>r.speed_kmh>60).length;
+  const dubious = matched.filter(r=>mph(r.speed_kmh)>40).length;
 
   show(`
     <div class="grid">
       <div class="card">
         <span class="lbl">Bearing &amp; range from basin</span>
-        ${rose(latest.length?latest:matched.slice(0,12))}
+        <div class="verdict">${verdict(latest)}</div>
+        ${latest.filter(r=>bearingFromBasin(r)==null).length
+          ? `<div class="rose-note" style="margin-top:-6px">
+             <span class="susp">${latest.filter(r=>bearingFromBasin(r)==null).length}
+             not plotted</span> — no bearing logged and no centroid to derive one from.</div>`
+          : ""}
+        ${rose(latest)}
         <div class="key">
           <span><i style="background:var(--approach)"></i>closing</span>
           <span><i style="background:var(--recede)"></i>receding</span>
           <span><i style="background:var(--quiet)"></i>unmatched</span>
         </div>
-        <div class="rose-note">Rings are ${RING_KM.join(", ")} km <b>from the basin
-        boundary</b>, not from its centre. The boundary lies
-        ${EDGE_FROM_CENTRE_KM[0]}–${EDGE_FROM_CENTRE_KM[1]} km out from the watershed
-        midpoint depending on direction, so a feature at 20 km here sits roughly
-        33–39 km from centroid rings drawn on a map. Vector length scales with speed;
-        its direction is the cell's own heading, not its bearing from the basin.</div>
+        <div class="rose-note">Rings are ${RING_MI.join(", ")} mi <b>from the basin
+        boundary</b>, not from its centre — the boundary itself lies
+        ${(EDGE_FROM_CENTRE_KM[0]*MI).toFixed(0)}–${(EDGE_FROM_CENTRE_KM[1]*MI).toFixed(0)} mi
+        out from the watershed midpoint, so add that much when comparing against rings
+        drawn around the centroid on a map. Vector length scales with speed; its
+        direction is the cell's own heading. <b>This cycle only</b> — the panels to the
+        right cover ${LOOKBACK_HOURS} hours.</div>
       </div>
 
       <div class="stack">
@@ -334,7 +419,7 @@ function render(rows){
         </div>
 
         <div class="card">
-          <span class="lbl">Speed of matched features · km/h</span>
+          <span class="lbl">Speed of matched features · mph · ${LOOKBACK_HOURS}h</span>
           <div class="rows">
             ${hist.map(h=>`
               <div class="row">
@@ -346,7 +431,7 @@ function render(rows){
           </div>
           <div class="rose-note">The stationary bin is the hazard case, not the safe one —
           a cell parked over a drainage is the Moab flood signature. ${matched.length} matched,
-          ${closing} closing${dubious?`, <span class="warm">${dubious} above 60 km/h and likely false matches</span>`:""}.</div>
+          ${closing} closing${dubious?`, <span class="warm">${dubious} above 40 mph and likely false matches</span>`:""}.</div>
         </div>
       </div>
     </div>
@@ -355,30 +440,34 @@ function render(rows){
       <span class="lbl">Latest cycle · ${stamp(last)}</span>
       ${latest.length ? `<div class="scroll"><table>
         <thead><tr>
-          <th>Window</th><th>Product</th><th>Range km</th><th>Basin</th>
-          <th>Speed</th><th>Heading</th><th>vs flow</th><th>Closing</th>
-          <th>ETA min</th><th>Area km²</th><th>Peak</th>
+          <th>Time</th><th>Product</th><th>Position</th><th>Moving</th>
+          <th>Closing</th><th>ETA</th><th>Cell</th>
         </tr></thead>
         <tbody>${latest.map((r,i)=>{
           const c = r.closing_kmh;
           const cls = r._odd ? "dim" : c==null?"dim":c>0?"warm":"cool";
           const newWin = i>0 && latest[i-1].frame_curr!==r.frame_curr;
+          const where = compass(bearingFromBasin(r));
           return `<tr${newWin?' style="border-top:1px solid var(--rule)"':""}>
             <td class="dim">${r.frame_curr?hhmm(r.frame_curr):"—"}</td>
-            <td>${esc(r.product||"")}${r._odd?` <span class="susp">${r._why}</span>`:""}</td>
-            <td>${fmt(r.dist_km,1)}</td>
-            <td class="dim">${esc(r.basin||"—")}</td>
-            <td>${r.matched?fmt(r.speed_kmh,1):'<span class="dim">—</span>'}</td>
-            <td>${r.matched?fmt(r.bearing_deg,0)+"°":'<span class="dim">—</span>'}</td>
-            <td class="dim">${r._off!=null?fmt(r._off,0)+"°":"—"}</td>
-            <td class="${cls}">${fmt(c,1)}</td>
-            <td class="${cls}">${r.eta_min!=null?fmt(r.eta_min,0):'<span class="dim">—</span>'}</td>
-            <td class="dim">${fmt(r.area_km2,1)}</td>
-            <td class="dim">${fmt(r.peak_value,1)} ${esc(r.units||"")}</td>
+            <td>${esc(r.product||"")}${r._odd
+                 ?` <span class="susp">${r._why}</span>`:""}</td>
+            <td>${r.in_basin===1
+                 ?'<span class="warm">over basin</span>'
+                 :`${fmt(mi(r.dist_km),1)} mi <span class="dim">${where}</span>`}</td>
+            <td>${r.matched
+                 ?`${compass(r.bearing_deg)} <span class="dim">${fmt(mph(r.speed_kmh),0)} mph</span>`
+                 :'<span class="dim">new / decayed</span>'}</td>
+            <td class="${cls}">${c==null?'<span class="dim">—</span>'
+                 : c>0?`+${fmt(mph(c),0)} mph`:"away"}</td>
+            <td class="${cls}">${r.eta_min!=null&&r.eta_min<180
+                 ?`${fmt(r.eta_min,0)} min`:'<span class="dim">—</span>'}</td>
+            <td class="dim">${fmt(mi2(r.area_km2),0)} mi² · ${peak(r.peak_value,r.units)}</td>
           </tr>`;}).join("")}</tbody></table></div>
-        <div class="rose-note">Rows span the two frame pairs written each cycle;
-        the rule marks the change of window, newest first. <b>vs flow</b> is the
-        angle between a feature's heading and the mean heading of the others.
+        <div class="rose-note"><b>Position</b> is where the cell sits relative to the
+        basin; <b>Moving</b> is its own heading. Rows span the two frame pairs written
+        each cycle, newest first, with a rule at the change of window. ETA is hidden
+        beyond 3 hours, where it is arithmetic rather than forecast.
         ${odd.length ? `<span class="susp">${odd.length} flagged</span> —
           heading against the ambient flow at well above ambient speed, the
           signature of one cell decaying while another forms nearby rather than
@@ -397,7 +486,7 @@ function render(rows){
    travel to reach us). The vector is the cell's own heading.        */
 function rose(feats){
   const S=340, C=S/2, R=C-30;
-  const rmax = Math.max(...RING_KM);
+  const rmax = Math.max(...RING_MI);
   const rr = km => Math.min(km,rmax)/rmax*R;
   const pt = (brg,km)=>{
     const a=(brg-90)*Math.PI/180, d=rr(km);
@@ -406,11 +495,11 @@ function rose(feats){
   let s=`<svg class="rose" viewBox="0 0 ${S} ${S}" role="img"
     aria-label="Detected storm features by bearing and range from the basin">`;
 
-  RING_KM.forEach(k=>{
+  RING_MI.forEach(k=>{
     s+=`<circle cx="${C}" cy="${C}" r="${rr(k)}" fill="none"
         stroke="var(--rule)" stroke-width="1"/>`;
     s+=`<text x="${C+3}" y="${C-rr(k)+11}" fill="var(--muted)"
-        font-size="9" font-family="IBM Plex Mono, monospace">${k}${k===rmax?" km":""}</text>`;
+        font-size="9" font-family="IBM Plex Mono, monospace">${k}${k===rmax?" mi":""}</text>`;
   });
   [["N",0],["E",90],["S",180],["W",270]].forEach(([lab,b])=>{
     const [x1,y1]=pt(b,rmax*0.03),[x2,y2]=pt(b,rmax);
@@ -428,19 +517,20 @@ function rose(feats){
 
   feats.forEach(f=>{
     if(f.dist_km==null) return;
-    const away = ((f.bearing_to_basin_deg ?? 0)+180)%360;
-    const [x,y] = pt(away, f.dist_km);
+    const away = bearingFromBasin(f);
+    if(away==null) return;          // unplaceable: absent beats wrong
+    const [x,y] = pt(away, mi(f.dist_km));
     const col = !f.matched ? "var(--quiet)"
               : (f.closing_kmh??0)>0 ? "var(--approach)" : "var(--recede)";
     if(f.matched && f.speed_kmh){
-      const len = 8+Math.min(f.speed_kmh,45)/45*30;
+      const len = 8+Math.min(mph(f.speed_kmh),30)/30*30;
       const a=(f.bearing_deg-90)*Math.PI/180;
       const x2=x+Math.cos(a)*len, y2=y+Math.sin(a)*len;
       s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${col}"
           stroke-width="1.6" opacity=".85"/>`;
       s+=`<circle cx="${x2}" cy="${y2}" r="2.4" fill="${col}"/>`;
     }
-    const r = 3.5+Math.min(Math.sqrt(f.area_km2||1),6);
+    const r = 3.5+Math.min(Math.sqrt(mi2(f.area_km2)||1),6);
     s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" opacity=".28"/>`;
     s+=`<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`;
     if(f._odd){   // running against the ambient flow: draw it as questioned
