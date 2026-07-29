@@ -121,6 +121,33 @@ tr:last-child td{border-bottom:none}
 /* --- messages -------------------------------------------------- */
 .msg{padding:16px 0;color:var(--muted);font-size:12px;line-height:1.6;max-width:60ch}
 .msg strong{color:var(--paper);font-weight:500}
+.guide{margin-top:14px;border:1px solid var(--rule);background:var(--panel)}
+.guide summary{
+  padding:11px 13px;cursor:pointer;list-style:none;
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-weight:600;text-transform:uppercase;letter-spacing:.14em;
+  font-size:10px;color:var(--muted);
+}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:"+";float:right;font-size:14px;line-height:.85}
+.guide[open] summary::after{content:"\2212"}
+.guide summary:hover{color:var(--paper)}
+.gbody{padding:0 13px 15px;font-size:11.5px;line-height:1.6;color:var(--muted);
+  max-width:78ch}
+.gbody h4{
+  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
+  font-size:10px;text-transform:uppercase;letter-spacing:.14em;
+  color:var(--paper);margin:16px 0 7px;font-weight:600;
+}
+.gbody h4:first-child{margin-top:0}
+.gbody p{margin:0 0 8px}
+.gbody dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:4px 14px}
+.gbody dt{color:var(--paper)}
+.gbody dd{margin:0}
+@media (max-width:560px){
+  .gbody dl{grid-template-columns:1fr;gap:1px}
+  .gbody dd{margin:0 0 7px}
+}
 .foot{
   margin-top:14px;padding-top:9px;border-top:1px solid var(--rule);
   color:var(--muted);font-size:10px;display:flex;justify-content:space-between;
@@ -139,6 +166,71 @@ tr:last-child td{border-bottom:none}
 
 <div id="body"></div>
 
+<details class="guide">
+<summary>What am I looking at?</summary>
+<div class="gbody">
+
+<h4>The rose</h4>
+<p>The centre is the <b>basin boundary</b> collapsed to a point, and the rings are
+distance from that boundary — not from the watershed centre. The boundary itself
+lies 8–12 mi out from the midpoint depending on direction, so add roughly that much
+when comparing against rings drawn around a centroid on a map.</p>
+<dl>
+  <dt>dot</dt><dd>a detected cell, at its true compass bearing and range. Size scales with area.</dd>
+  <dt>line</dt><dd>the cell's <i>own heading</i>, length scaled to speed. Pointing inward means closing.</dd>
+  <dt>amber</dt><dd>closing on the basin</dd>
+  <dt>blue</dt><dd>receding or moving across</dd>
+  <dt>sage</dt><dd>detected, but not matched to the previous frame</dd>
+  <dt>dashed ring</dt><dd>the match is suspect — see Flags below</dd>
+</dl>
+<p style="margin-top:8px">The rose shows the <b>current cycle only</b>. The two panels
+beside it cover 48 hours.</p>
+
+<h4>The table</h4>
+<dl>
+  <dt>Time</dt><dd>which radar frame the row came from. Two frame pairs are written each
+      cycle, so rows span two windows — newest first, with a rule at the change. A feature
+      that appears in both with a consistent heading is far more trustworthy than one that
+      appears once.</dd>
+  <dt>Product</dt><dd><b>rate</b> is MRMS PrecipRate, the instantaneous surface rainfall
+      rate. <b>refl</b> is the reflectivity composite, which sees the storm <i>aloft</i> and
+      may pick up a cell before it produces rain at the ground — the reason both are logged.</dd>
+  <dt>Position</dt><dd>where the cell sits relative to the basin boundary.</dd>
+  <dt>Moving</dt><dd>the cell's own heading and speed. Not the same as Position.</dd>
+  <dt>Closing</dt><dd>the component of that motion pointed at the basin. Positive is
+      approaching; a cell moving fast across the front of the basin closes slowly.</dd>
+  <dt>ETA</dt><dd>range divided by closing speed. Hidden past 3 hours, where it is
+      arithmetic rather than a forecast.</dd>
+  <dt>Cell</dt><dd>footprint area and peak intensity.</dd>
+</dl>
+
+<h4>Flags</h4>
+<dl>
+  <dt>reversed</dt><dd>heading against the mean flow of every other cell, at above ambient speed.</dd>
+  <dt>overspeed</dt><dd>far faster than everything else in the same airmass, even where the
+      direction looks reasonable.</dd>
+  <dt>new / decayed</dt><dd>could not be paired with the previous frame. Expected for a cell
+      that has just formed, and not an error.</dd>
+</dl>
+<p style="margin-top:8px">Both flags are the signature of one cell decaying while another
+forms nearby and the two being paired by mistake. Cells advect with roughly the same steering
+flow, so a lone reversal or a lone sprinter is almost always bookkeeping rather than weather.
+Flagged rows are still logged in full; only the display greys their closing speed and ETA.</p>
+
+<h4>What this is</h4>
+<p><b>Phase 1, log-only.</b> Nothing here changes a threat tier, a footprint, an alert or
+anything on the operational dashboard. It exists to accumulate a season of observed values so
+that thresholds can be set from data rather than guessed — including quiet cycles, which are
+what make a false-alarm rate computable at all.</p>
+<p>The <b>stationary</b> speed bin is the hazard case, not the safe one: a cell parked over a
+drainage is the classic Moab flood signature, so a future rule must never read "not moving"
+as "stand down".</p>
+<p>Display units are imperial. The log stays metric, because that is what MRMS publishes and
+what the season analysis should run on.</p>
+
+</div>
+</details>
+
 <div class="foot">
   <span>Diagnostic only · no scoring impact · log-only phase</span>
   <span id="refreshed">—</span>
@@ -151,7 +243,7 @@ tr:last-child td{border-bottom:none}
 
 // Feature service URL, WITHOUT the trailing layer index. Get it from
 // the notebook:  gis.content.get(MOTION_LOG_ITEM_ID).url
-const SERVICE_URL = "PASTE_SERVICE_URL_HERE";
+const SERVICE_URL = "https://services5.arcgis.com/eZ3AleDZdwnqtB9E/arcgis/rest/services/fwfs_moab_storm_motion_public/FeatureServer";
 
 const TABLE_INDEX   = 0;      // storm_motion sits at 0 (no layers in the service)
 const LOOKBACK_HOURS= 48;
