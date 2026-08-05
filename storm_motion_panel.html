@@ -153,6 +153,7 @@ tr:last-child td{border-bottom:none}
   color:var(--muted);font-size:10px;display:flex;justify-content:space-between;
   gap:12px;flex-wrap:wrap;
 }
+
 /* --- alert banners --------------------------------------------- */
 .alerts{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .alerts:empty{display:none}
@@ -202,6 +203,18 @@ tr:last-child td{border-bottom:none}
 <details class="guide">
 <summary>What am I looking at?</summary>
 <div class="gbody">
+
+<h4>The banners</h4>
+<p>Nothing appears here on a quiet day. Two kinds can show up:</p>
+<dl>
+  <dt>QPE/FFG · ARI</dt><dd>a <b>confirmation</b> signal. Across three verified events
+      the high thresholds produced no false alarms in 136 samples, but detected only
+      about a tenth of them — so a banner means what the depth score already shows is
+      climatologically extreme, never that something new has been found.</dd>
+  <dt>Cell approaching</dt><dd>an intense, persistent cell closing on the basin on a day
+      whose environment supports storms. It states position and heading only. It does
+      not estimate rainfall or basin response.</dd>
+</dl>
 
 <h4>The rose</h4>
 <p>The centre is the <b>basin boundary</b> collapsed to a point, and the rings are
@@ -304,6 +317,24 @@ const BASIN_CENTRE = [38.5264, -109.3624];
 // paste a token, or append ?token=... to this page's URL.
 const TOKEN = "";
 
+// The scoring layer, which carries the FLASH ARI / QPE-FFG columns the matcher
+// writes each cycle. DIFFERENT SERVICE from the motion log, so it needs its own
+// URL and its own sharing. If it is org-only this panel simply omits the FLASH
+// card rather than failing — the motion half keeps working either way.
+// Likely: .../rest/services/fwfs_moab_scoring_metrics/FeatureServer
+const SCORING_URL   = "";     // <- paste, WITHOUT the layer index
+const SCORING_INDEX = 0;
+
+// Banner threshold on the FLASH tiers. 2 = Elevated on the tutorial's Table 7
+// (QPE/FFG at or above 0.50). Raise to 3 if the banner proves too talkative.
+//
+// These are CONFIRMATION signals. Across three GARR-validated events the high
+// thresholds produced zero false alarms in 136 samples but a POD near 0.10 --
+// they will not find an event the depth match missed. A banner here means
+// "what the depth score already shows is climatologically extreme", never
+// "something new is happening".
+const FLASH_BANNER_TIER = 2;
+
 /* ================================================================= */
 
 const $ = id => document.getElementById(id);
@@ -401,7 +432,10 @@ async function load(){
       If it mentions permissions, the table is still org-only — share it, or add
       <code>?token=…</code> to this page's URL.</div>`);
   }
-  render((j.features||[]).map(f=>f.attributes));
+  // FLASH is a second, independent service. Fetched after the motion log and
+  // allowed to come back null, so one sharing problem cannot blank the page.
+  const flash = await loadFlash();
+  render((j.features||[]).map(f=>f.attributes), flash);
   $("refreshed").textContent = "refreshed "+stamp(Date.now());
 }
 
@@ -437,7 +471,7 @@ function verdict(latest){
     ${compass(bearingFromBasin(near))}, all moving away or across.`;
 }
 
-function render(rows){
+function render(rows, flash){
   if(!rows.length){
     return show(`<div class="msg"><strong>No rows in the last ${LOOKBACK_HOURS} hours.</strong><br>
       The matcher writes to this table every cycle, including quiet ones, so an
@@ -462,8 +496,10 @@ function render(rows){
   // blending both into one apparently-simultaneous list.
   const latest = rows.filter(r=>r.run_ts===last && r.n_features>0)
                      .sort((a,b)=>(b.frame_curr-a.frame_curr)
-                        renderAlerts(flash, latest);
                                   || ((a.dist_km??1e9)-(b.dist_km??1e9)));
+
+  // Banners run off the LATEST cycle only, and are drawn above the grid.
+  renderAlerts(flash, latest);
 
   // Ambient-flow check. Cells in one airmass advect with roughly the same
   // steering flow, so a feature heading opposite the rest AND moving well above
@@ -596,7 +632,8 @@ function render(rows){
             <td class="dim">${r.frame_curr?hhmm(r.frame_curr):"—"}</td>
             <td>${esc(r.product||"")}${r._odd
                  ?` <span class="susp">${r._why}${r._why==="reversed"
-                   ?` ${fmt(r._off,0)}\u00B0`:""}</span>`:""}</td>
+                   ?` ${fmt(r._off,0)}\u00B0`:""}</span>`:""}${
+                 r.would_alert===1?' <span class="susp">would alert</span>':""}</td>
             <td>${r.in_basin===1
                  ?'<span class="warm">over basin</span>'
                  :`${fmt(mi(r.dist_km),1)} mi <span class="dim">${where}</span>`}</td>
@@ -682,681 +719,9 @@ function rose(feats){
       s+=`<circle cx="${x}" cy="${y}" r="${r+4}" fill="none" stroke="#b8734a"
           stroke-width="1.1" stroke-dasharray="2 3"/>`;
     }
-  });
-  return s+"</svg>";
-}
-
-load();
-setInterval(load, REFRESH_MIN*60*1000);
-</script>
-</body>
-</html><!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Storm Motion · Phase 1</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ---------------------------------------------------------------
-   CONFIG lives in the script block at the bottom of this file.
-   Palette: shaded relief off a USGS quad sheet of the La Sals at
-   dusk. Deliberately not a radar-scope green console.
-   --------------------------------------------------------------- */
-:root{
-  --ink:#171c22;          /* deep shadow: page ground */
-  --panel:#1f262e;        /* raised surface */
-  --rule:#333e49;         /* hairline */
-  --paper:#e6e1d6;        /* warm off-white, primary type */
-  --muted:#8b97a3;        /* secondary type */
-  --approach:#e39a2b;     /* sodium amber: closing on the basin */
-  --recede:#4e8fa8;       /* slate blue: moving away */
-  --quiet:#6f7f74;        /* detected, unmatched */
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0}
-body{
-  background:var(--ink);
-  color:var(--paper);
-  font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;
-  font-size:13px;
-  line-height:1.45;
-  -webkit-font-smoothing:antialiased;
-  padding:14px;
-}
-.lbl{
-  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
-  font-weight:600;
-  text-transform:uppercase;
-  letter-spacing:.14em;
-  font-size:10px;
-  color:var(--muted);
-}
-
-/* --- status bar ------------------------------------------------ */
-.bar{
-  display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;
-  padding-bottom:10px;margin-bottom:14px;
-  border-bottom:1px solid var(--rule);
-}
-.bar h1{
-  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
-  font-size:15px;font-weight:600;letter-spacing:.2em;
-  text-transform:uppercase;margin:0;
-}
-.bar h1 span{color:var(--muted);font-weight:400}
-.stat{display:flex;align-items:baseline;gap:7px}
-.stat b{font-weight:500;font-size:15px;font-variant-numeric:tabular-nums}
-.dot{
-  width:7px;height:7px;border-radius:50%;
-  display:inline-block;flex:0 0 auto;align-self:center;
-}
-.dot.live{background:var(--approach)}
-.dot.stale{background:var(--recede)}
-.dot.dead{background:#8d4a3f}
-@media (prefers-reduced-motion:no-preference){
-  .dot.live{animation:beat 2.6s ease-in-out infinite}
-}
-@keyframes beat{0%,100%{opacity:1}50%{opacity:.32}}
-
-/* --- grid ------------------------------------------------------ */
-.grid{display:grid;grid-template-columns:minmax(300px,1.05fr) 1fr;gap:14px}
-@media (max-width:760px){.grid{grid-template-columns:1fr}}
-.card{
-  background:var(--panel);
-  border:1px solid var(--rule);
-  padding:12px 13px 13px;
-}
-.card > .lbl{display:block;margin-bottom:9px}
-.stack{display:flex;flex-direction:column;gap:14px}
-
-/* --- rose ------------------------------------------------------ */
-.rose{width:100%;height:auto;display:block}
-.rose-note{
-  color:var(--muted);font-size:10.5px;margin-top:8px;line-height:1.5;
-}
-.key{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;font-size:10.5px;color:var(--muted)}
-.key i{width:8px;height:8px;display:inline-block;margin-right:5px;border-radius:50%}
-
-/* --- bars ------------------------------------------------------ */
-.rows{display:flex;flex-direction:column;gap:6px}
-.row{display:grid;grid-template-columns:74px 1fr 46px;align-items:center;gap:9px}
-.row span:first-child{color:var(--muted);font-size:11px}
-.track{height:11px;background:#161c22;position:relative;overflow:hidden}
-.fill{height:100%;background:var(--recede)}
-.fill.warm{background:var(--approach)}
-.fill.flat{background:var(--quiet)}
-.row b{font-weight:500;text-align:right;font-variant-numeric:tabular-nums;font-size:11.5px}
-
-/* --- table ----------------------------------------------------- */
-.scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:11.5px;font-variant-numeric:tabular-nums}
-th{
-  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
-  font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:9.5px;
-  color:var(--muted);text-align:right;padding:0 9px 6px 0;white-space:nowrap;
-  border-bottom:1px solid var(--rule);
-}
-th:first-child,td:first-child{text-align:left}
-td{padding:5px 9px 5px 0;border-bottom:1px solid rgba(51,62,73,.42);white-space:nowrap}
-tr:last-child td{border-bottom:none}
-.warm{color:var(--approach)}
-.cool{color:var(--recede)}
-.dim{color:var(--muted)}
-.verdict{font-size:13.5px;line-height:1.5;color:var(--paper);margin:-2px 0 12px;
-  padding-bottom:11px;border-bottom:1px solid var(--rule)}
-.verdict b{font-weight:600}
-.susp{color:#b8734a;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-family:"IBM Plex Sans Condensed",sans-serif}
-
-/* --- messages -------------------------------------------------- */
-.msg{padding:16px 0;color:var(--muted);font-size:12px;line-height:1.6;max-width:60ch}
-.msg strong{color:var(--paper);font-weight:500}
-.guide{margin-top:14px;border:1px solid var(--rule);background:var(--panel)}
-.guide summary{
-  padding:11px 13px;cursor:pointer;list-style:none;
-  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
-  font-weight:600;text-transform:uppercase;letter-spacing:.14em;
-  font-size:10px;color:var(--muted);
-}
-.guide summary::-webkit-details-marker{display:none}
-.guide summary::after{content:"+";float:right;font-size:14px;line-height:.85}
-.guide[open] summary::after{content:"\2212"}
-.guide summary:hover{color:var(--paper)}
-.gbody{padding:0 13px 15px;font-size:11.5px;line-height:1.6;color:var(--muted);
-  max-width:78ch}
-.gbody h4{
-  font-family:"IBM Plex Sans Condensed",system-ui,sans-serif;
-  font-size:10px;text-transform:uppercase;letter-spacing:.14em;
-  color:var(--paper);margin:16px 0 7px;font-weight:600;
-}
-.gbody h4:first-child{margin-top:0}
-.gbody p{margin:0 0 8px}
-.gbody dl{margin:0;display:grid;grid-template-columns:max-content 1fr;gap:4px 14px}
-.gbody dt{color:var(--paper)}
-.gbody dd{margin:0}
-@media (max-width:560px){
-  .gbody dl{grid-template-columns:1fr;gap:1px}
-  .gbody dd{margin:0 0 7px}
-}
-.foot{
-  margin-top:14px;padding-top:9px;border-top:1px solid var(--rule);
-  color:var(--muted);font-size:10px;display:flex;justify-content:space-between;
-  gap:12px;flex-wrap:wrap;
-}
-</style>
-</head>
-<body>
-
-<div class="bar">
-  <h1>Storm Motion <span>· Phase 1</span></h1>
-  <div class="stat"><i class="dot dead" id="dot"></i><span class="lbl">Last run</span><b id="lastRun">—</b></div>
-  <div class="stat"><span class="lbl">Cycles 48h</span><b id="nCycles">—</b></div>
-  <div class="stat"><span class="lbl">Detections</span><b id="nDet">—</b></div>
-</div>
-
-<div id="body"></div>
-
-<details class="guide">
-<summary>What am I looking at?</summary>
-<div class="gbody">
-
-<h4>The rose</h4>
-<p>The centre is the <b>basin boundary</b> collapsed to a point, and the rings are
-distance from that boundary — not from the watershed centre. The boundary itself
-lies 8–12 mi out from the midpoint depending on direction, so add roughly that much
-when comparing against rings drawn around a centroid on a map.</p>
-<dl>
-  <dt>dot</dt><dd>a detected cell, at its true compass bearing and range. Size scales with area.</dd>
-  <dt>line</dt><dd>the cell's <i>own heading</i>, length scaled to speed. Pointing inward means closing.</dd>
-  <dt>amber</dt><dd>closing on the basin</dd>
-  <dt>blue</dt><dd>receding or moving across</dd>
-  <dt>sage</dt><dd>detected, but not matched to the previous frame</dd>
-  <dt>dashed ring</dt><dd>the match is suspect — see Flags below</dd>
-</dl>
-<p style="margin-top:8px">The rose shows the <b>current cycle only</b>. The two panels
-beside it cover 48 hours.</p>
-
-<h4>The table</h4>
-<dl>
-  <dt>Time</dt><dd>which radar frame the row came from. Two frame pairs are written each
-      cycle, so rows span two windows — newest first, with a rule at the change. A feature
-      that appears in both with a consistent heading is far more trustworthy than one that
-      appears once.</dd>
-  <dt>Product</dt><dd><b>rate</b> is MRMS PrecipRate, the instantaneous surface rainfall
-      rate. <b>refl</b> is the reflectivity composite, which sees the storm <i>aloft</i> and
-      may pick up a cell before it produces rain at the ground — the reason both are logged.</dd>
-  <dt>Position</dt><dd>where the cell sits relative to the basin boundary.</dd>
-  <dt>Moving</dt><dd>the cell's own heading and speed. Not the same as Position.</dd>
-  <dt>Closing</dt><dd>the component of that motion pointed at the basin. Positive is
-      approaching; a cell moving fast across the front of the basin closes slowly.</dd>
-  <dt>ETA</dt><dd>range divided by closing speed. Hidden past 3 hours, where it is
-      arithmetic rather than a forecast.</dd>
-  <dt>Cell</dt><dd>footprint area and peak intensity.</dd>
-</dl>
-
-<h4>Flags</h4>
-<dl>
-  <dt>reversed</dt><dd>heading against the mean flow of every other cell, at above ambient speed.</dd>
-  <dt>overspeed</dt><dd>far faster than everything else in the same airmass, even where the
-      direction looks reasonable.</dd>
-  <dt>new / decayed</dt><dd>could not be paired with the previous frame. Expected for a cell
-      that has just formed, and not an error.</dd>
-</dl>
-<p style="margin-top:8px">Both flags are the signature of one cell decaying while another
-forms nearby and the two being paired by mistake. Cells advect with roughly the same steering
-flow, so a lone reversal or a lone sprinter is almost always bookkeeping rather than weather.
-Flagged rows are still logged in full; only the display greys their closing speed and ETA.</p>
-
-<h4>What this is</h4>
-<p><b>Phase 1, log-only.</b> Nothing here changes a threat tier, a footprint, an alert or
-anything on the operational dashboard. It exists to accumulate a season of observed values so
-that thresholds can be set from data rather than guessed — including quiet cycles, which are
-what make a false-alarm rate computable at all.</p>
-<p>The <b>stationary</b> speed bin is the hazard case, not the safe one: a cell parked over a
-drainage is the classic Moab flood signature, so a future rule must never read "not moving"
-as "stand down".</p>
-<p>Display units are imperial. The log stays metric, because that is what MRMS publishes and
-what the season analysis should run on.</p>
-
-</div>
-</details>
-
-<div class="foot">
-  <span>Diagnostic only · no scoring impact · log-only phase</span>
-  <span id="refreshed">—</span>
-</div>
-
-<script>
-/* =================================================================
-   CONFIG
-   ================================================================= */
-
-// Feature service URL, WITHOUT the trailing layer index. Get it from
-// the notebook:  gis.content.get(MOTION_LOG_ITEM_ID).url
-const SERVICE_URL = "https://services5.arcgis.com/eZ3AleDZdwnqtB9E/arcgis/rest/services/fwfs_moab_storm_motion_public/FeatureServer";
-
-const TABLE_INDEX   = 0;      // storm_motion sits at 0 (no layers in the service)
-const LOOKBACK_HOURS= 48;
-const REFRESH_MIN   = 2;
-const CYCLE_MIN     = 15;     // matcher cadence, for the cycle count
-// Rings in MILES. The search box is 50 km (31 mi), so 30 mi is its edge.
-const RING_MI       = [5,15,30];
-
-// Range on this plot is measured to the nearest point on the BASIN BOUNDARY,
-// not to the watershed centroid — that is what the logger computes, and it is
-// the number that matters, since rain starts falling on the basin when a cell
-// reaches the edge. Measured 2026-07-28, the boundary lies this far from the
-// centroid depending on direction. Shown so a range here can be reconciled with
-// rings drawn around the centroid on a map.
-const EDGE_FROM_CENTRE_KM = [12.5, 19.2];
-
-// Watershed centroid, measured from the basin cell index 2026-07-28. Used only
-// as a FALLBACK for rows whose bearing_to_basin_deg is null — every unmatched
-// feature logged before the 2026-07-29 notebook fix. Bearing from the centroid
-// and bearing from the nearest edge differ negligibly for a cell several miles
-// out, which is the only case this fallback has to cover.
-const BASIN_CENTRE = [38.5264, -109.3624];
-
-// Leave blank if the table is shared publicly. If it stays org-only,
-// paste a token, or append ?token=... to this page's URL.
-const TOKEN = "";
-
-/* ================================================================= */
-
-const $ = id => document.getElementById(id);
-const urlToken = new URLSearchParams(location.search).get("token") || TOKEN;
-
-// The scoring layer, which carries the FLASH ARI / QPE-FFG columns the matcher
-// writes each cycle. DIFFERENT SERVICE from the motion log, so it needs its own
-// URL and its own sharing. If it is org-only this panel will simply omit the
-// FLASH card rather than fail — the motion half keeps working either way.
-// Likely: .../rest/services/fwfs_moab_scoring_metrics/FeatureServer
-const SCORING_URL   = "";     // <- paste, WITHOUT the layer index
-const SCORING_INDEX = 0;
-
-// Banner threshold on the FLASH tiers. 2 = Elevated on the tutorial's Table 7
-// (QPE/FFG at or above 0.50). Raise to 3 if the banner proves too talkative.
-//
-// These are CONFIRMATION signals. Across three GARR-validated events the high
-// thresholds produced zero false alarms in 136 samples but a POD near 0.10 --
-// they will not find an event the depth match missed. A banner here means
-// "what the depth score already shows is climatologically extreme", never
-// "something new is happening".
-const FLASH_BANNER_TIER = 2;
-
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function fmt(v,d=1){return (v===null||v===undefined||v==="")?"—":Number(v).toFixed(d);}
-function hhmm(ms){const t=new Date(ms);return String(t.getUTCHours()).padStart(2,"0")+":"+String(t.getUTCMinutes()).padStart(2,"0")+"Z";}
-
-// Local Moab time. Uses the IANA zone rather than a fixed -6 offset so the
-// label stays correct through the MDT/MST changeover in November with no edit.
-// hourCycle h23 keeps midnight as 00:00 rather than 24:00.
-const _localFmt = new Intl.DateTimeFormat("en-US",{
-  timeZone:"America/Denver", hour:"2-digit", minute:"2-digit",
-  hourCycle:"h23", timeZoneName:"short"
-});
-function stamp(ms){ return `${hhmm(ms)} (${_localFmt.format(new Date(ms))})`; }
-
-// The log stores SI, because that is what MRMS publishes and what the season
-// analysis should run on. Everything below converts at DISPLAY time only, so
-// the archive stays in the units the instruments actually report.
-const MI = 0.621371, MI2 = 0.386102, IN = 1/25.4;
-const mi   = km  => km ==null?null:km *MI;
-const mph  = kmh => kmh==null?null:kmh*MI;
-const mi2  = km2 => km2==null?null:km2*MI2;
-
-const COMPASS=["N","NNE","NE","ENE","E","ESE","SE","SSE",
-               "S","SSW","SW","WSW","W","WNW","NW","NNW"];
-function bearingDeg(la1,lo1,la2,lo2){
-  const p=Math.PI/180;
-  const y=Math.sin((lo2-lo1)*p)*Math.cos(la2*p);
-  const x=Math.cos(la1*p)*Math.sin(la2*p)
-         -Math.sin(la1*p)*Math.cos(la2*p)*Math.cos((lo2-lo1)*p);
-  return (Math.atan2(y,x)*180/Math.PI+360)%360;
-}
-// Bearing FROM the basin TO the feature — i.e. where the cell sits. Returns
-// null rather than guessing: defaulting a missing bearing to 0 is what drew
-// every newly formed cell due south of the basin no matter where it was.
-function bearingFromBasin(f){
-  if(f.bearing_to_basin_deg!=null) return (f.bearing_to_basin_deg+180)%360;
-  if(f.cent_lat!=null && f.cent_lon!=null)
-    return bearingDeg(BASIN_CENTRE[0],BASIN_CENTRE[1],f.cent_lat,f.cent_lon);
-  return null;
-}
-function compass(deg){
-  if(deg==null) return "—";
-  return COMPASS[Math.round((((deg%360)+360)%360)/22.5)%16];
-}
-// peak_value is mm/hr for the rate product and dBZ for reflectivity, so the
-// conversion has to key off the logged units rather than assume.
-function peak(v,u){
-  if(v==null) return "—";
-  return (u==="mm/hr") ? `${(v*IN).toFixed(2)} in/hr` : `${v.toFixed(0)} ${u||""}`;
-}
-
-// Circular statistics for the ambient-flow check below. A plain arithmetic mean
-// of bearings is wrong across the 0/360 wrap, so use the resultant vector.
-function median(a){if(!a.length)return null;const s=[...a].sort((x,y)=>x-y),m=s.length>>1;
-  return s.length%2?s[m]:(s[m-1]+s[m])/2;}
-function meanBearing(bs){let x=0,y=0;bs.forEach(b=>{const r=b*Math.PI/180;
-  x+=Math.sin(r);y+=Math.cos(r);});return (Math.atan2(x,y)*180/Math.PI+360)%360;}
-// Resultant length, 0..1. Near 1 the other cells agree on a direction, so
-// "against the flow" is a meaningful statement. Near 0 they disagree with each
-// other and there is no flow to be against -- flag nothing in that case.
-function coherence(bs){let x=0,y=0;bs.forEach(b=>{const r=b*Math.PI/180;
-  x+=Math.sin(r);y+=Math.cos(r);});return Math.hypot(x,y)/Math.max(bs.length,1);}
-function angDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
-
-async function load(){
-  if(SERVICE_URL.startsWith("PASTE")){
-    return show(`<div class="msg"><strong>Set the service URL.</strong><br>
-      Edit <code>SERVICE_URL</code> at the top of this file. Retrieve it from the
-      notebook with <code>gis.content.get(MOTION_LOG_ITEM_ID).url</code>.</div>`);
-  }
-  const since = new Date(Date.now()-LOOKBACK_HOURS*3600*1000)
-    .toISOString().slice(0,19).replace("T"," ");
-  const p = new URLSearchParams({
-    where:`run_ts >= timestamp '${since}'`,
-    outFields:"*", returnGeometry:"false",
-    orderByFields:"run_ts DESC", resultRecordCount:"1000", f:"json"
-  });
-  if(urlToken) p.set("token",urlToken);
-
-  let j;
-  try{
-    const r = await fetch(`${SERVICE_URL}/${TABLE_INDEX}/query?${p}`);
-    j = await r.json();
-  }catch(e){
-    return show(`<div class="msg"><strong>Could not reach the service.</strong><br>
-      ${esc(e.message)}</div>`);
-  }
-  if(j.error){
-    return show(`<div class="msg"><strong>The service returned an error.</strong><br>
-      ${esc(j.error.message||"")}<br><br>
-      If it mentions permissions, the table is still org-only — share it, or add
-      <code>?token=…</code> to this page's URL.</div>`);
-  }
-  const flash = await loadFlash();
-  render((j.features||[]).map(f=>f.attributes), flash);
-  $("refreshed").textContent = "refreshed "+stamp(Date.now());
-}
-
-function show(html){ $("body").innerHTML = html; }
-
-// One sentence answering the only question that matters at a glance. Written
-// before any chart, because a reader should not have to decode a polar plot to
-// learn that nothing is happening.
-function verdict(latest){
-  if(!latest.length)
-    return `<b>Nothing above threshold.</b> No cells detected within
-            ${Math.max(...RING_MI)} mi of the basin this cycle.`;
-  const real   = latest.filter(r=>!r._odd);
-  const inb    = real.filter(r=>r.in_basin===1);
-  const close  = real.filter(r=>(r.closing_kmh??0)>0)
-                     .sort((a,b)=>(a.eta_min??1e9)-(b.eta_min??1e9));
-  const near   = real.length?real[0]:latest[0];
-  const n      = latest.length;
-  const cells  = `${n} cell${n===1?"":"s"} tracked`;
-
-  if(inb.length) return `<b class="warm">${inb.length} cell${inb.length===1?"":"s"}
-    over the basin.</b> ${cells} this cycle.`;
-  if(close.length){
-    const c = close[0];
-    const eta = c.eta_min!=null && c.eta_min<180
-      ? ` about <b class="warm">${Math.round(c.eta_min)} min</b> out`
-      : " but only slowly";
-    return `<b class="warm">${close.length} closing.</b> Nearest is
-      ${fmt(mi(c.dist_km),1)} mi ${compass(bearingFromBasin(c))},
-      gaining ${fmt(mph(c.closing_kmh),0)} mph,${eta}. ${cells}.`;
-  }
-  return `<b>Nothing closing.</b> ${cells}; nearest ${fmt(mi(near.dist_km),1)} mi
-    ${compass(bearingFromBasin(near))}, all moving away or across.`;
-}
-
-function render(rows, flash){
-  if(!rows.length){
-    return show(`<div class="msg"><strong>No rows in the last ${LOOKBACK_HOURS} hours.</strong><br>
-      The matcher writes to this table every cycle, including quiet ones, so an
-      empty result means logging has not started. Check that
-      <code>MOTION_LOG_ITEM_ID</code> is set in the notebook.</div>`);
-  }
-
-  // --- headline ------------------------------------------------
-  const last = Math.max(...rows.map(r=>r.run_ts));
-  const ageMin = (Date.now()-last)/60000;
-  $("lastRun").textContent = stamp(last)+"  "+(ageMin<90?`${Math.round(ageMin)}m`:`${(ageMin/60).toFixed(1)}h`);
-  $("dot").className = "dot "+(ageMin<CYCLE_MIN*2?"live":ageMin<CYCLE_MIN*6?"stale":"dead");
-
-  const cycles = new Set(rows.map(r=>Math.round(r.run_ts/60000))).size;
-  const det = rows.filter(r=>r.n_features>0);
-  $("nCycles").textContent = cycles;
-  $("nDet").textContent = det.length;
-
-  // --- latest cycle --------------------------------------------
-  // Each cycle writes TWO consecutive frame pairs, so these rows span two
-  // observation windows. Sort newest window first and label it, rather than
-  // blending both into one apparently-simultaneous list.
-  const latest = rows.filter(r=>r.run_ts===last && r.n_features>0)
-                     .sort((a,b)=>(b.frame_curr-a.frame_curr)
-                                  || ((a.dist_km??1e9)-(b.dist_km??1e9)));
-
-  // Ambient-flow check. Cells in one airmass advect with roughly the same
-  // steering flow, so a feature heading opposite the rest AND moving well above
-  // the ambient speed is almost always a decay/birth mismatch, not a cell that
-  // reversed. Leave-one-out, so the outliers cannot define the mean they are
-  // measured against.
-  const mv = latest.filter(r=>r.matched===1 && r.bearing_deg!=null);
-  const medSpeed = median(mv.map(r=>mph(r.speed_kmh)));      // mph throughout
-  mv.forEach(r=>{
-    const spd = mph(r.speed_kmh);
-    const others = mv.filter(o=>o!==r).map(o=>o.bearing_deg);
-    if(others.length<2) return;
-    r._off = angDiff(r.bearing_deg, meanBearing(others));
-    r._coh = coherence(others);
-
-    // REVERSAL. Heading against a coherent field is strong evidence by itself,
-    // so this no longer also demands above-ambient speed. That extra condition
-    // let a 16 mph cell heading SSW through four NE movers pass unflagged on
-    // 2026-07-29, and it became the headline "1 closing, 55 min out".
-    // Two guards remain, both about whether the question is well posed at all:
-    //   spd > 5    below this a centroid shifts less than one MRMS cell between
-    //              frames, so its bearing is jitter rather than direction
-    //   coh > 0.7  the other cells must actually agree on a flow before
-    //              "against the flow" carries any meaning
-    const rev  = r._off > 120 && spd > 5 && r._coh > 0.7;
-
-    // OVERSPEED. Far faster than everything else in the same airmass, even when
-    // the direction looks plausible. The absolute floor stops a quiet day with a
-    // tiny median from flagging ordinary spread.
-    const fast = medSpeed && spd > 2.5*medSpeed && spd > 22;
-
-    r._odd = rev || fast;
-    r._why = rev ? "reversed" : fast ? "overspeed" : null;
-  });
-  const odd = mv.filter(r=>r._odd);
-
-  // --- per-product detection rate ------------------------------
-  const prods = [...new Set(rows.map(r=>r.product).filter(Boolean))];
-  const byProd = prods.map(p=>{
-    const all = rows.filter(r=>r.product===p);
-    const hit = all.filter(r=>r.n_features>0).length;
-    return {p, hit, all:all.length, pct: all.length? hit/all.length : 0};
-  });
-
-  // --- speed distribution --------------------------------------
-  const matched = rows.filter(r=>r.matched===1 && r.speed_kmh!==null && r.speed_kmh!==undefined);
-  const BINS=[[0,1,"stationary"],[1,5,"1–5"],[5,12,"5–12"],
-              [12,20,"12–20"],[20,30,"20–30"],[30,1e9,"30+"]];
-  const hist = BINS.map(([lo,hi,lab])=>({
-    lab, n: matched.filter(r=>mph(r.speed_kmh)>=lo && mph(r.speed_kmh)<hi).length, lo
-  }));
-  const histMax = Math.max(1,...hist.map(h=>h.n));
-
-  const closing = matched.filter(r=>(r.closing_kmh??0)>0).length;
-  const dubious = matched.filter(r=>mph(r.speed_kmh)>40).length;
-
-  show(`
-    <div class="grid">
-      <div class="card">
-        <span class="lbl">Bearing &amp; range from basin</span>
-        <div class="verdict">${verdict(latest)}</div>
-        ${latest.filter(r=>bearingFromBasin(r)==null).length
-          ? `<div class="rose-note" style="margin-top:-6px">
-             <span class="susp">${latest.filter(r=>bearingFromBasin(r)==null).length}
-             not plotted</span> — no bearing logged and no centroid to derive one from.</div>`
-          : ""}
-        ${rose(latest)}
-        <div class="key">
-          <span><i style="background:var(--approach)"></i>closing</span>
-          <span><i style="background:var(--recede)"></i>receding</span>
-          <span><i style="background:var(--quiet)"></i>unmatched</span>
-        </div>
-        <div class="rose-note">Rings are ${RING_MI.join(", ")} mi <b>from the basin
-        boundary</b>, not from its centre — the boundary itself lies
-        ${(EDGE_FROM_CENTRE_KM[0]*MI).toFixed(0)}–${(EDGE_FROM_CENTRE_KM[1]*MI).toFixed(0)} mi
-        out from the watershed midpoint, so add that much when comparing against rings
-        drawn around the centroid on a map. Vector length scales with speed; its
-        direction is the cell's own heading. <b>This cycle only</b> — the panels to the
-        right cover ${LOOKBACK_HOURS} hours.</div>
-      </div>
-
-      <div class="stack">
-        <div class="card">
-          <span class="lbl">Detection rate, ${LOOKBACK_HOURS}h</span>
-          <div class="rows">
-            ${byProd.map(d=>`
-              <div class="row">
-                <span>${esc(d.p)}</span>
-                <div class="track"><div class="fill" style="width:${(d.pct*100).toFixed(1)}%"></div></div>
-                <b>${d.hit}/${d.all}</b>
-              </div>`).join("")}
-          </div>
-          <div class="rose-note">${byProd.length>1
-            ? "If one product consistently detects more, it is seeing cells the other misses — the question that decides which drives any future alert."
-            : "Only one product is reporting. Check the folder names in MOTION_PRODUCTS."}</div>
-        </div>
-
-        <div class="card">
-          <span class="lbl">Speed of matched features · mph · ${LOOKBACK_HOURS}h</span>
-          <div class="rows">
-            ${hist.map(h=>`
-              <div class="row">
-                <span>${esc(h.lab)}</span>
-                <div class="track"><div class="fill ${h.lo===0?"warm":"flat"}"
-                  style="width:${(h.n/histMax*100).toFixed(1)}%"></div></div>
-                <b>${h.n}</b>
-              </div>`).join("")}
-          </div>
-          <div class="rose-note">The stationary bin is the hazard case, not the safe one —
-          a cell parked over a drainage is the Moab flood signature. ${matched.length} matched,
-          ${closing} closing${dubious?`, <span class="warm">${dubious} above 40 mph and likely false matches</span>`:""}.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:14px">
-      <span class="lbl">Latest cycle · ${stamp(last)}</span>
-      ${latest.length ? `<div class="scroll"><table>
-        <thead><tr>
-          <th>Time</th><th>Product</th><th>Position</th><th>Moving</th>
-          <th>Closing</th><th>ETA</th><th>Cell</th>
-        </tr></thead>
-        <tbody>${latest.map((r,i)=>{
-          const c = r.closing_kmh;
-          const cls = r._odd ? "dim" : c==null?"dim":c>0?"warm":"cool";
-          const newWin = i>0 && latest[i-1].frame_curr!==r.frame_curr;
-          const where = compass(bearingFromBasin(r));
-          return `<tr${newWin?' style="border-top:1px solid var(--rule)"':""}>
-            <td class="dim">${r.frame_curr?hhmm(r.frame_curr):"—"}</td>
-            <td>${esc(r.product||"")}${r._odd
-                 ?` <span class="susp">${r._why}${r._why==="reversed"
-                   ?` ${fmt(r._off,0)}\u00B0`:""}</span>`:""}</td>
-            <td>${r.in_basin===1
-                 ?'<span class="warm">over basin</span>'
-                 :`${fmt(mi(r.dist_km),1)} mi <span class="dim">${where}</span>`}</td>
-            <td>${r.matched
-                 ?`${compass(r.bearing_deg)} <span class="dim">${fmt(mph(r.speed_kmh),0)} mph</span>`
-                 :'<span class="dim">new / decayed</span>'}</td>
-            <td class="${cls}">${c==null?'<span class="dim">—</span>'
-                 : c>0?`+${fmt(mph(c),0)} mph`:"away"}</td>
-            <td class="${cls}">${r.eta_min!=null&&r.eta_min<180
-                 ?`${fmt(r.eta_min,0)} min`:'<span class="dim">—</span>'}</td>
-            <td class="dim">${fmt(mi2(r.area_km2),0)} mi² · ${peak(r.peak_value,r.units)}</td>
-          </tr>`;}).join("")}</tbody></table></div>
-        <div class="rose-note"><b>Position</b> is where the cell sits relative to the
-        basin; <b>Moving</b> is its own heading. Rows span the two frame pairs written
-        each cycle, newest first, with a rule at the change of window. ETA is hidden
-        beyond 3 hours, where it is arithmetic rather than forecast.
-        ${odd.length ? `<span class="susp">${odd.length} flagged</span> —
-          heading against the ambient flow at well above ambient speed, the
-          signature of one cell decaying while another forms nearby rather than
-          a cell reversing. Closing speed and ETA are shown greyed for these.`
-        : "Nothing is running against the ambient flow this cycle."}</div>`
-      : `<div class="msg">Nothing above threshold this cycle. In dry weather that is the
-         correct reading — the log records quiet cycles too, which is what makes a
-         false-alarm rate computable later.</div>`}
-    </div>
-  `);
-}
-
-/* --- the signature: polar plot of features around the basin ------
-   Radius is range from the basin edge, angle is the reciprocal of
-   bearing_to_basin (the feature sits opposite the direction it would
-   travel to reach us). The vector is the cell's own heading.        */
-function rose(feats){
-  const S=340, C=S/2, R=C-30;
-  const rmax = Math.max(...RING_MI);
-  const rr = km => Math.min(km,rmax)/rmax*R;
-  const pt = (brg,km)=>{
-    const a=(brg-90)*Math.PI/180, d=rr(km);
-    return [C+Math.cos(a)*d, C+Math.sin(a)*d];
-  };
-  let s=`<svg class="rose" viewBox="0 0 ${S} ${S}" role="img"
-    aria-label="Detected storm features by bearing and range from the basin">`;
-
-  RING_MI.forEach(k=>{
-    s+=`<circle cx="${C}" cy="${C}" r="${rr(k)}" fill="none"
-        stroke="var(--rule)" stroke-width="1"/>`;
-    s+=`<text x="${C+3}" y="${C-rr(k)+11}" fill="var(--muted)"
-        font-size="9" font-family="IBM Plex Mono, monospace">${k}${k===rmax?" mi":""}</text>`;
-  });
-  [["N",0],["E",90],["S",180],["W",270]].forEach(([lab,b])=>{
-    const [x1,y1]=pt(b,rmax*0.03),[x2,y2]=pt(b,rmax);
-    s+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
-        stroke="var(--rule)" stroke-width="1" stroke-dasharray="2 5"/>`;
-    const [tx,ty]=pt(b,rmax*1.16);
-    s+=`<text x="${tx}" y="${ty+3}" fill="var(--muted)" font-size="10"
-        text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif"
-        letter-spacing="1">${lab}</text>`;
-  });
-  s+=`<circle cx="${C}" cy="${C}" r="4.5" fill="var(--paper)"/>`;
-  s+=`<text x="${C}" y="${C+18}" fill="var(--muted)" font-size="9"
-      text-anchor="middle" font-family="IBM Plex Sans Condensed, sans-serif"
-      letter-spacing="1.4">BASIN EDGE</text>`;
-
-  feats.forEach(f=>{
-    if(f.dist_km==null) return;
-    const away = bearingFromBasin(f);
-    if(away==null) return;          // unplaceable: absent beats wrong
-    const [x,y] = pt(away, mi(f.dist_km));
-    const col = !f.matched ? "var(--quiet)"
-              : (f.closing_kmh??0)>0 ? "var(--approach)" : "var(--recede)";
-    if(f.matched && f.speed_kmh){
-      const len = 8+Math.min(mph(f.speed_kmh),30)/30*30;
-      const a=(f.bearing_deg-90)*Math.PI/180;
-      const x2=x+Math.cos(a)*len, y2=y+Math.sin(a)*len;
-      s+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${col}"
-          stroke-width="1.6" opacity=".85"/>`;
-      s+=`<circle cx="${x2}" cy="${y2}" r="2.4" fill="${col}"/>`;
-    }
-    const r = 3.5+Math.min(Math.sqrt(mi2(f.area_km2)||1),6);
-    s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${col}" opacity=".28"/>`;
-    s+=`<circle cx="${x}" cy="${y}" r="3" fill="${col}"/>`;
-    if(f._odd){   // running against the ambient flow: draw it as questioned
-      s+=`<circle cx="${x}" cy="${y}" r="${r+4}" fill="none" stroke="#b8734a"
-          stroke-width="1.1" stroke-dasharray="2 3"/>`;
+    if(f.would_alert===1){   // met every approach criterion this cycle
+      s+=`<circle cx="${x}" cy="${y}" r="${r+7}" fill="none"
+          stroke="var(--approach)" stroke-width="1" opacity=".55"/>`;
     }
   });
   return s+"</svg>";
@@ -1405,7 +770,8 @@ const CORROB_TEXT = {
 };
 
 // One dedup'd banner per basin. Phase 2 is log-only, so the wording says
-// "would have", never "alert sent" -- the page must not imply a message went out.
+// "log-only, nothing sent" unless the log itself records a send -- the page
+// must never imply a message went out when it did not.
 function approachBanners(latest){
   const seen = new Set(), out = [];
   latest.forEach(r=>{
@@ -1491,6 +857,7 @@ function flashCard(a){
     ${age!=null?` Frame ${age} min old.`:""}
     ${a.flash_stale===1?' <span class="susp">stale</span>':""}</div></div>`;
 }
+
 load();
 setInterval(load, REFRESH_MIN*60*1000);
 </script>
