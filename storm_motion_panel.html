@@ -462,6 +462,7 @@ function render(rows){
   // blending both into one apparently-simultaneous list.
   const latest = rows.filter(r=>r.run_ts===last && r.n_features>0)
                      .sort((a,b)=>(b.frame_curr-a.frame_curr)
+                        renderAlerts(flash, latest);
                                   || ((a.dist_km??1e9)-(b.dist_km??1e9)));
 
   // Ambient-flow check. Cells in one airmass advect with roughly the same
@@ -545,6 +546,7 @@ function render(rows){
       </div>
 
       <div class="stack">
+        ${flashCard(flash)}
         <div class="card">
           <span class="lbl">Detection rate, ${LOOKBACK_HOURS}h</span>
           <div class="rows">
@@ -1076,7 +1078,8 @@ async function load(){
       If it mentions permissions, the table is still org-only — share it, or add
       <code>?token=…</code> to this page's URL.</div>`);
   }
-  render((j.features||[]).map(f=>f.attributes));
+  const flash = await loadFlash();
+  render((j.features||[]).map(f=>f.attributes), flash);
   $("refreshed").textContent = "refreshed "+stamp(Date.now());
 }
 
@@ -1112,7 +1115,7 @@ function verdict(latest){
     ${compass(bearingFromBasin(near))}, all moving away or across.`;
 }
 
-function render(rows){
+function render(rows, flash){
   if(!rows.length){
     return show(`<div class="msg"><strong>No rows in the last ${LOOKBACK_HOURS} hours.</strong><br>
       The matcher writes to this table every cycle, including quiet ones, so an
