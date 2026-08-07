@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Flood Threat Nowcast — Shadow</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2937; --muted: #6b7280; --line: #e5e7eb;
+    --fresh: #16a34a; --aging: #d97706; --stale: #dc2626;
+    --elev: #FFE24D; --high: #FF8C1A; --vhigh: #E62E1F;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--fg); padding: 10px;
+  }
+  .hdr { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .hdr h1 { font-size: 15px; font-weight: 600; }
+  .badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .05em;
+    color: #92400e; background: #fef3c7; border: 1px solid #fcd34d;
+    padding: 1px 6px; border-radius: 3px;
+  }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px;
+            color: var(--muted); margin-left: auto; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--stale); }
+  .dot.fresh { background: var(--fresh); }
+  .dot.aging { background: var(--aging); }
+  .tiers { display: flex; gap: 12px; font-size: 12px; margin: 6px 0 8px;
+           color: var(--muted); flex-wrap: wrap; }
+  .tier { display: flex; align-items: center; gap: 5px; }
+  .sw { width: 11px; height: 11px; border-radius: 2px; border: 1px solid var(--line); }
+  .tier b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  img#panel { width: 100%; height: auto; display: block; border: 1px solid var(--line);
+              border-radius: 4px; background: #f9fafb; min-height: 120px; }
+  .foot { font-size: 11px; color: var(--muted); margin-top: 6px;
+          display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+  .err { font-size: 12px; color: var(--stale); margin-top: 6px; display: none; }
+</style>
+</head>
+<body>
+  <div class="hdr">
+    <h1>Flood Threat Nowcast — 0–2 hr</h1>
+    <span class="badge">EXPERIMENTAL · SHADOW MODE</span>
+    <div class="status"><span class="dot" id="dot"></span><span id="age">loading…</span></div>
+  </div>
+  <div class="tiers">
+    <span class="tier"><span class="sw" style="background:var(--elev)"></span>Elevated <b id="nElev">–</b></span>
+    <span class="tier"><span class="sw" style="background:var(--high)"></span>High <b id="nHigh">–</b></span>
+    <span class="tier"><span class="sw" style="background:var(--vhigh)"></span>Very High <b id="nVhigh">–</b></span>
+    <span class="tier" id="driverWrap" style="display:none">· lead driver: <b id="driver">–</b></span>
+  </div>
+  <img id="panel" alt="Flood threat nowcast composite map">
+  <div class="err" id="err">Feed unavailable — showing last loaded image.</div>
+  <div class="foot">
+    <span>Valid <b id="valid">–</b> · run <span id="run">–</span></span>
+    <span>MRMS FLASH + HRRR · not an official NWS product</span>
+  </div>
+
+<script>
+(function () {
+  var BASE = ".";                    // same directory as this file in the Pages repo
+  var META = BASE + "/flash_risk_latest.json";
+  var IMG  = BASE + "/flash_risk_latest.png";
+  var REFRESH_S = 60;                // metadata poll; image reloads only on new valid time
+  var lastValid = null;
+
+  function fmtZ(iso) {
+    var d = new Date(iso);
+    return isNaN(d) ? "–" :
+      d.toISOString().slice(5, 16).replace("T", " ") + "Z";
+  }
+  function setAge(iso) {
+    var mins = (Date.now() - new Date(iso).getTime()) / 60000;
+    var dot = document.getElementById("dot");
+    dot.className = "dot " + (mins < 15 ? "fresh" : mins < 30 ? "aging" : "");
+    document.getElementById("age").textContent =
+      mins < 1.5 ? "just updated" : Math.round(mins) + " min old";
+  }
+  function num(id, v) {
+    document.getElementById(id).textContent = (v == null) ? "–" : v;
+  }
+  function tick() {
+    fetch(META + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (m) {
+        document.getElementById("err").style.display = "none";
+        document.getElementById("valid").textContent = fmtZ(m.valid_utc);
+        document.getElementById("run").textContent = fmtZ(m.run_utc);
+        setAge(m.valid_utc);
+        num("nElev", m.px_elevated); num("nHigh", m.px_high);
+        num("nVhigh", m.px_very_high);
+        if (m.lead_driver) {
+          document.getElementById("driverWrap").style.display = "";
+          document.getElementById("driver").textContent = m.lead_driver;
+        }
+        if (m.valid_utc !== lastValid) {      // only re-pull image on new data
+          lastValid = m.valid_utc;
+          document.getElementById("panel").src = IMG + "?t=" + Date.now();
+        }
+      })
+      .catch(function () {
+        document.getElementById("err").style.display = "block";
+        document.getElementById("dot").className = "dot";
+        document.getElementById("age").textContent = "feed error";
+      });
+  }
+  tick();
+  setInterval(tick, REFRESH_S * 1000);
+})();
+</script>
+</body>
+</html>
