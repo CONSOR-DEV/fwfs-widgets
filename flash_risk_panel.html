@@ -33,7 +33,8 @@
   .tier { display: flex; align-items: center; gap: 5px; }
   .sw { width: 11px; height: 11px; border-radius: 2px; border: 1px solid var(--line); }
   .tier b { color: var(--fg); font-variant-numeric: tabular-nums; }
-  img#panel { width: 100%; height: auto; display: block; border: 1px solid var(--line);
+  img#panel, img#qpf { width: 100%; height: auto; display: block;
+              border: 1px solid var(--line);
               border-radius: 4px; background: #f9fafb; min-height: 120px; }
   .foot { font-size: 11px; color: var(--muted); margin-top: 6px;
           display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
@@ -53,6 +54,10 @@
     <span class="tier" id="driverWrap" style="display:none">· lead driver: <b id="driver">–</b></span>
   </div>
   <img id="panel" alt="Flood threat nowcast composite map">
+  <div class="tiers" style="margin-top:12px"><span class="tier"
+    style="color:var(--fg);font-weight:600">Projected rain · next 2 hr</span>
+    <span class="tier">radar advection blended with HRRR</span></div>
+  <img id="qpf" alt="Blended 0-2 hr QPF map">
   <div class="err" id="err">Feed unavailable — showing last loaded image.</div>
   <div class="foot">
     <span>Valid <b id="valid">–</b> · run <span id="run">–</span></span>
@@ -96,9 +101,11 @@
           document.getElementById("driverWrap").style.display = "";
           document.getElementById("driver").textContent = m.lead_driver;
         }
-        if (m.valid_utc !== lastValid) {      // only re-pull image on new data
+        if (m.valid_utc !== lastValid) {      // only re-pull images on new data
           lastValid = m.valid_utc;
           document.getElementById("panel").src = IMG + "?t=" + Date.now();
+          document.getElementById("qpf").src =
+            BASE + "/flash_risk_qpf_latest.png?t=" + Date.now();
         }
       })
       .catch(function () {
