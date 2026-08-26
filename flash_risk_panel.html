@@ -10,7 +10,8 @@
     --bg: #ffffff; --fg: #1f2937; --muted: #6b7280; --line: #e5e7eb;
     --fresh: #16a34a; --aging: #d97706; --stale: #dc2626;
     /* Risk tiers: keep in sync with RISK_COLORS in the notebook CFG cell.
-       Tints of Consor brand Plum #621244 (PMS 2357 C) at 30/62/100%. */
+       Active ramp: Green/Amber/Dark Red alternate (the Consor Plum tint
+       ramp is the commented line beside RISK_COLORS in the notebook). */
     --elev: #BCDCA4; --high: #C77F00; --vhigh: #8A1717;
   }
   * { box-sizing: border-box; margin: 0; }
@@ -35,7 +36,7 @@
   .tier { display: flex; align-items: center; gap: 5px; }
   .sw { width: 11px; height: 11px; border-radius: 2px; border: 1px solid var(--line); }
   .tier b { color: var(--fg); font-variant-numeric: tabular-nums; }
-  img#panel, img#qpf { width: 100%; height: auto; display: block;
+  img#panel, img#qpf, img#motion { width: 100%; height: auto; display: block;
               border: 1px solid var(--line);
               border-radius: 4px; background: #f9fafb; min-height: 120px; }
   .foot { font-size: 11px; color: var(--muted); margin-top: 6px;
@@ -60,6 +61,12 @@
     style="color:var(--fg);font-weight:600">Projected rain · next 2 hr</span>
     <span class="tier">radar advection blended with HRRR</span></div>
   <img id="qpf" alt="Blended 0-2 hr QPF map">
+  <div class="tiers" style="margin-top:12px" id="motionHead"><span class="tier"
+    style="color:var(--fg);font-weight:600">Motion diagnostic · optical flow vs correlation</span>
+    <span class="tier">shadow only — renders on runs with rain; check the
+    valid time printed in the panel</span></div>
+  <img id="motion" alt="Motion shadow diagnostic: dense optical flow vs correlation vector"
+       onerror="this.style.display='none';document.getElementById('motionHead').style.display='none';">
   <div class="err" id="err">Feed unavailable — showing last loaded image.</div>
   <div class="foot">
     <span>Valid <b id="valid">–</b> · run <span id="run">–</span></span>
@@ -108,6 +115,10 @@
           document.getElementById("panel").src = IMG + "?t=" + Date.now();
           document.getElementById("qpf").src =
             BASE + "/flash_risk_qpf_latest.png?t=" + Date.now();
+          var mo = document.getElementById("motion");
+          mo.style.display = "";           // retry after any earlier 404
+          document.getElementById("motionHead").style.display = "";
+          mo.src = BASE + "/flash_risk_motion_latest.png?t=" + Date.now();
         }
       })
       .catch(function () {
