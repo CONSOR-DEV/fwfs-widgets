@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nightlight Header Weather</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+  }
+  #nl-wx {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+    padding: 4px 6px;
+    border-radius: 8px;
+    transition: background .15s ease;
+  }
+  #nl-wx:hover { background: rgba(41,171,226,.12); }
+  #nl-wx:focus-visible { outline: 2px solid #29ABE2; outline-offset: 2px; }
+  #nl-wx-icon { display: inline-flex; align-items: center; }
+  #nl-wx-temp { font-size: 26px; font-weight: 600; line-height: 1; }
+  #nl-wx-desc { font-size: 13px; opacity: .85; }
+
+  #nl-wx-panel {
+    display: none;
+    position: absolute;
+    top: 54px;
+    left: 0;
+    background: #0B2545;
+    border: 1px solid #1C7FC4;
+    border-radius: 10px;
+    padding: 16px 20px;
+    color: #fff;
+    font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+    min-width: 240px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    z-index: 9999;
+  }
+  #nl-wx-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #29ABE2;
+    margin-bottom: 8px;
+  }
+  #nl-wx-detail { font-size: 13px; line-height: 1.8; }
+  #nl-wx-time { font-size: 11px; opacity: .6; margin-top: 8px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #nl-wx { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="nl-wx" role="button" tabindex="0" aria-label="Current conditions for Price. Click for details." title="Click for current conditions">
+  <span id="nl-wx-icon"></span>
+  <span id="nl-wx-temp">--&deg;</span>
+  <span id="nl-wx-desc"></span>
+</div>
+
+<div id="nl-wx-panel" role="dialog" aria-label="Current conditions detail">
+  <div id="nl-wx-panel-title">Current Conditions &mdash; Price (KPUC)</div>
+  <div id="nl-wx-detail"></div>
+  <div id="nl-wx-time"></div>
+</div>
+
+<script>
+(function(){
+  const STATION = "KPUC";
+  const cToF   = c => c==null ? null : Math.round(c*9/5+32);
+  const msToMph= m => m==null ? null : Math.round(m*2.237);
+
+  // SVG icons — stroke uses Consor sky (#29ABE2); sun uses nightlight yellow (#FFD23F).
+  // Swap SKY to "#FFFFFF" if you want crisp white line icons instead.
+  const SKY = "#29ABE2";
+  const SUN = "#FFD23F";
+
+  function wxIcon(d){
+    d = (d||"").toLowerCase();
+    const w = 'width="26" height="26" viewBox="0 0 24 24" fill="none" '+
+              'stroke="'+SKY+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+
+    if(d.includes("thunder"))
+      return `<svg ${w}><path d="M19 16.9A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/><path d="M13 11l-4 6h6l-4 6" stroke="${SUN}"/></svg>`;
+    if(d.includes("rain")||d.includes("shower")||d.includes("drizzle"))
+      return `<svg ${w}><path d="M16 13a5 5 0 100-8 7 7 0 10-9 6.7"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="16" y1="19" x2="16" y2="21"/></svg>`;
+    if(d.includes("snow")||d.includes("flurr")||d.includes("sleet")||d.includes("ice"))
+      return `<svg ${w}><path d="M20 17.6A5 5 0 0018 8h-1.26A8 8 0 104 16.25"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="20" x2="16.01" y2="20"/></svg>`;
+    if(d.includes("fog")||d.includes("haze")||d.includes("mist")||d.includes("smoke")||d.includes("dust"))
+      return `<svg ${w}><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="16" x2="17" y2="16"/></svg>`;
+    if(d.includes("cloud")||d.includes("overcast"))
+      return `<svg ${w}><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>`;
+    // clear / fair / sunny / default
+    return `<svg ${w} stroke="${SUN}"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></svg>`;
+  }
+
+  // Pull the most recent value of a field across a list of observations,
+  // so a single null in the latest ob doesn't blank the display.
+  function recent(features, key){
+    for(const f of features){
+      const v = f.properties?.[key]?.value;
+      if(v != null) return v;
+    }
+    return null;
+  }
+
+  async function load(){
+    try{
+      // Fetch a small batch so we can fall back to the last good reading.
+      const r = await fetch(`https://api.weather.gov/stations/${STATION}/observations?limit=8`,
+        { headers: { "Accept": "application/geo+json" } });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const features = (await r.json()).features || [];
+      if(!features.length) throw new Error("no observations");
+
+      // Anchor the timestamp/description to the most recent ob that has a temperature;
+      // fall back to the latest ob if none in the batch report one.
+      const anchor = features.find(f => f.properties?.temperature?.value != null) || features[0];
+      const ap = anchor.properties;
+
+      const t    = cToF(recent(features, "temperature"));
+      const dew  = cToF(recent(features, "dewpoint"));
+      const rh   = recent(features, "relativeHumidity");
+      const wind = msToMph(recent(features, "windSpeed"));
+      const gust = msToMph(recent(features, "windGust"));
+      const desc = ap.textDescription || features[0].properties.textDescription || "";
+
+      document.getElementById("nl-wx-temp").textContent = t==null ? "--\u00B0" : t+"\u00B0F";
+      document.getElementById("nl-wx-desc").textContent = desc;
+      document.getElementById("nl-wx-icon").innerHTML    = wxIcon(desc);
+
+      document.getElementById("nl-wx-detail").innerHTML =
+        `Conditions: ${desc || "\u2014"}<br>`+
+        `Temperature: ${t!=null ? t+"\u00B0F" : "\u2014"}<br>`+
+        `Dewpoint: ${dew!=null ? dew+"\u00B0F" : "\u2014"}<br>`+
+        `Humidity: ${rh!=null ? Math.round(rh)+"%" : "\u2014"}<br>`+
+        `Wind: ${wind!=null ? wind+" mph" : "calm"}${gust!=null ? " (gusts "+gust+")" : ""}`;
+
+      document.getElementById("nl-wx-time").textContent =
+        "Observed: " + new Date(ap.timestamp).toLocaleString("en-US",
+          { timeZone: "America/Denver", month:"short", day:"numeric",
+            hour:"numeric", minute:"2-digit" }) + " MT";
+    }catch(e){
+      document.getElementById("nl-wx-temp").textContent = "N/A";
+      document.getElementById("nl-wx-detail").textContent =
+        "Conditions unavailable. Retrying on next refresh.";
+    }
+  }
+
+  const widget = document.getElementById("nl-wx");
+  const panel  = document.getElementById("nl-wx-panel");
+
+  function togglePanel(){
+    panel.style.display = panel.style.display === "block" ? "none" : "block";
+  }
+  widget.addEventListener("click", togglePanel);
+  widget.addEventListener("keydown", e => {
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); togglePanel(); }
+  });
+  // Close panel when clicking outside
+  document.addEventListener("click", e => {
+    if(!widget.contains(e.target) && !panel.contains(e.target)) panel.style.display = "none";
+  });
+
+  load();
+  setInterval(load, 10*60*1000); // refresh every 10 min
+})();
+</script>
+
+</body>
+</html>

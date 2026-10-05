@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- TODO(carbon_co): Adopted date at bottom still reads June 4, 2026 (Moab). Update when Carbon County adopts. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal Disclaimer &amp; Terms of Use — Carbon County Flood Warning &amp; Forecast System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+  /* ---- Consor brand palette (per brand guide) ---- */
+  :root{
+    --dark-blue:   #003B5C;   /* primary */
+    --light-blue:  #0091DA;   /* primary */
+    --dark-gray:   #47565A;   /* neutral */
+    --warm-gray:   #CBC4BC;   /* neutral */
+    --sea-foam:    #A1D6CA;   /* accent */
+    --periwinkle:  #C6C4D2;   /* accent */
+    --peach:       #FA9370;   /* accent — attention/emphasis */
+    --paper:       #F7F5F2;   /* warm-gray tinted white for the document body */
+    --line:        #DDD7CF;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:'Source Sans 3', 'Segoe UI', sans-serif;
+    background:var(--dark-blue);
+    color:var(--dark-gray);
+    padding:30px 18px 40px;
+  }
+  .wrap{ max-width:920px; margin:0 auto; }
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:grid; grid-template-columns:1fr auto 1fr;
+    align-items:center; gap:16px; margin-bottom:16px;
+  }
+  .wordmark{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:700;
+    font-size:22px; color:#fff; letter-spacing:.01em;
+  }
+  .wordmark span{ color:var(--sea-foam); font-weight:600; }
+  .masthead-logo{ justify-self:center; }
+  .masthead-logo img{
+    display:block; height:46px; width:auto; max-width:300px;
+    background:transparent;
+  }
+  .adopted{
+    justify-self:end;
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dark-blue); background:var(--sea-foam);
+    padding:6px 14px; border-radius:4px; white-space:nowrap;
+  }
+  @media (max-width:640px){
+    .masthead{ grid-template-columns:1fr; justify-items:center;
+      text-align:center; gap:10px; }
+    .masthead-logo, .adopted{ justify-self:center; }
+    .masthead-logo img{ height:38px; }
+  }
+
+  /* ---------- document card ---------- */
+  .doc{
+    background:var(--paper); border-radius:10px;
+    padding:34px 38px 30px;
+  }
+  .doc-rule{ height:4px; border-radius:10px 10px 0 0; margin:-34px -38px 26px;
+    background:linear-gradient(90deg, var(--light-blue) 0 30%, var(--dark-blue) 30% 100%); }
+  h1{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:700;
+    font-size:clamp(21px, 3vw, 27px); color:var(--dark-blue); line-height:1.2;
+  }
+  .doc-sub{
+    margin-top:6px; font-size:13.5px; font-style:italic; color:var(--dark-gray);
+    border-bottom:1px solid var(--line); padding-bottom:18px;
+  }
+
+  /* numbered legal sections */
+  .sections{ counter-reset:sec; margin-top:8px; }
+  section{ padding:18px 0 4px; counter-increment:sec; }
+  section + section{ border-top:1px solid var(--line); }
+  h2{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:16.5px; color:var(--dark-blue); margin-bottom:7px;
+    display:flex; align-items:baseline; gap:10px;
+  }
+  h2::before{
+    content:counter(sec, decimal-leading-zero);
+    font-weight:700; font-size:13px; color:var(--light-blue);
+    letter-spacing:.05em;
+  }
+  section p{ font-size:14px; line-height:1.62; margin-bottom:9px; }
+  section p:last-child{ margin-bottom:6px; }
+  a{ color:var(--light-blue); text-decoration:none; border-bottom:1px solid rgba(0,145,218,.35); }
+  a:hover{ border-bottom-color:var(--light-blue); }
+
+  /* ---------- limitation of liability callout (peach, toned) ---------- */
+  section.liability{
+    background:rgba(250,147,112,.13);
+    border-left:4px solid var(--peach);
+    border-top:none; border-radius:0 6px 6px 0;
+    padding:18px 20px 12px; margin-top:18px;
+  }
+  section.liability + section{ border-top:none; margin-top:14px; }
+  section.liability h2{ color:var(--dark-blue); }
+  section.liability h2::before{ color:var(--peach); }
+  section.liability p{ font-weight:400; }
+  section.liability b{ color:var(--dark-blue); }
+
+  /* official-warnings closer gets a quiet periwinkle key */
+  section.official{
+    background:rgba(198,196,210,.28);
+    border-left:4px solid var(--periwinkle);
+    border-top:none; border-radius:0 6px 6px 0;
+    padding:18px 20px 12px;
+  }
+
+  /* ---------- footer ---------- */
+  .doc-footer{
+    margin-top:22px; padding-top:14px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-size:12px; color:var(--dark-gray);
+  }
+  .doc-footer .ver{ font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    letter-spacing:.08em; text-transform:uppercase; }
+  footer.page{ margin-top:14px; text-align:center; font-size:11.5px; color:#7FA2BD; }
+
+  @media (max-width:600px){
+    .doc{ padding:24px 18px 22px; }
+    .doc-rule{ margin:-24px -18px 20px; }
+    body{ padding:18px 10px 28px; }
+  }
+  @media print{
+    body{ background:#fff; padding:0; }
+    .doc{ border:1px solid var(--line); }
+    .wordmark{ color:var(--dark-blue); }
+    .adopted{ border:1px solid var(--dark-blue); }
+    .masthead-logo{ display:none; }  /* white logo invisible on print white */
+    footer.page{ display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="wordmark">FWFS</div>
+    <div class="masthead-logo">
+      <img src="https://nateclements.github.io/fwfs-widgets/CE_Logo_RGB_Horz-White-Color.png"
+           alt="Consor North America, Inc."
+           onerror="this.style.display='none'">
+    </div>
+    <div class="adopted">Adopted June 4, 2026</div>
+  </div>
+
+  <div class="doc">
+    <div class="doc-rule"></div>
+    <h1>Carbon County Flood Warning and Forecast System (FWFS)<br>
+        Legal Disclaimer &amp; Terms of Use</h1>
+    <p class="doc-sub">Developed and delivered by Consor North America, Inc.
+    Operated in partnership with the Carbon County Office of Emergency Management,
+    Price, Utah.</p>
+
+    <div class="sections">
+
+      <section>
+        <h2>Purpose and Scope</h2>
+        <p>The Carbon County Flood Warning and Forecast System (FWFS) is a
+        decision-support tool developed by Consor North America, Inc. to assist
+        trained emergency management professionals in monitoring and assessing
+        flood threat conditions across Carbon County.
+        This application aggregates publicly available meteorological forecast
+        data, radar products, and automated scoring algorithms to provide
+        situational awareness support. It does not constitute an official flood
+        forecast, flash flood warning, or emergency directive of any kind, nor is
+        this application a substitute for professional judgment, training,
+        advice, or analysis.</p>
+      </section>
+
+      <section>
+        <h2>Risk Scores Are Guidance, Not Guarantees</h2>
+        <p>The automated scoring framework within the FWFS integrates National
+        Weather Service forecast products, radar-estimated precipitation, and
+        flash flood guidance data to produce composite threat scores across four
+        pre-event time windows. These scores are guidance benchmarks based on
+        generalized hydrometeorological thresholds. They do not account for every
+        site-specific condition &mdash; including antecedent soil moisture,
+        channel capacity, debris loading, terrain variability, and storm-scale
+        behavior &mdash; that can influence flash flood onset and severity in
+        canyon-country environments. Flooding may occur at score levels below
+        action thresholds, and high scores do not guarantee that flooding will
+        occur.</p>
+      </section>
+
+      <section>
+        <h2>Flash Flood Guidance (FFG) Is a Generalized Estimate</h2>
+        <p>FFG values used within this application are basin-scale estimates
+        produced by the NWS Colorado Basin River Forecast Center. They are
+        statistical approximations of the rainfall amount needed to produce
+        bankfull or greater streamflow and are not real-time, site-specific
+        measurements. FFG exceedance should not be treated as a definitive
+        indicator that flooding is occurring or imminent; FFG non-exceedance
+        should not be interpreted as a guarantee that flooding will not occur.</p>
+      </section>
+
+      <section>
+        <h2>Radar and Remotely Sensed Data Have Inherent Limitations</h2>
+        <p>Radar and multi-sensor precipitation products displayed within the
+        FWFS &mdash; including MRMS QPE, Base Reflectivity, and QPE-to-FFG Ratio
+        &mdash; are subject to error from beam blockage, range degradation,
+        bright-band contamination, hail contamination, and complex terrain
+        effects common to canyon-country environments. Radar-only QPE is an
+        estimate of rainfall, not a direct gauge measurement, and may
+        underestimate or overestimate accumulation in any given storm event.</p>
+      </section>
+
+      <section>
+        <h2>Third-Party Data Feeds Are Outside Consor North America's Control
+            and May Be Unavailable</h2>
+        <p>The FWFS relies on real-time data feeds sourced from third-party
+        providers including the National Weather Service (NWS), the National
+        Oceanic and Atmospheric Administration (NOAA), and WeatherWise
+        (Interactive Weather Limited). These feeds are subject to planned
+        maintenance windows, unplanned server outages, transmission
+        interruptions, API failures, and other disruptions or changes entirely
+        beyond the control of Consor North America, Inc. During any such
+        disruption, FWFS products &mdash; including radar displays, QPE layers,
+        pre-event scoring updates, and nowcast widgets &mdash; may be delayed,
+        degraded, incomplete, or entirely unavailable.</p>
+        <p>Users must not interpret an absence of displayed data as an absence
+        of precipitation or flood threat. Emergency managers are responsible for
+        identifying data gaps, pursuing alternative situational awareness
+        resources, and making response decisions appropriate to conditions
+        regardless of FWFS availability. Consor North America, Inc. shall not be
+        liable for any loss, injury, damage, or consequence arising from a
+        failure, interruption, or degradation of any third-party data feed,
+        regardless of cause or duration.</p>
+      </section>
+
+      <section>
+        <h2>WeatherWise Data Usage</h2>
+        <p>Certain live radar and nowcast widgets within the FWFS 0&ndash;6 Hour
+        Nowcasting window incorporate data sourced from WeatherWise
+        (<a href="https://weatherwise.app" target="_blank" rel="noopener">weatherwise.app</a>),
+        a product of Interactive Weather Limited. Use of WeatherWise data within
+        this application is permitted subject to acceptance of WeatherWise's
+        published policies, which govern all use of their service. Users of the
+        FWFS are advised that WeatherWise's Terms of Service, Privacy Policy, and
+        Disclaimer apply to any interaction with WeatherWise-powered content
+        displayed herein, and are available at
+        <a href="https://weatherwise.app" target="_blank" rel="noopener">weatherwise.app</a>.</p>
+        <p>Consistent with WeatherWise's own disclaimer, any reliance placed on
+        WeatherWise-sourced data is at the user's own risk, and Interactive
+        Weather Limited shall not be held liable for any loss or damage arising
+        from the use of their data within this or any other application. Consor
+        North America, Inc. makes no warranties regarding the accuracy,
+        reliability, suitability, or availability of WeatherWise-sourced content
+        and is not responsible for data interruptions originating from
+        WeatherWise's platform.</p>
+      </section>
+
+      <section>
+        <h2>Human Judgment Is Essential and Irreplaceable</h2>
+        <p>The FWFS is one component of a broader operational decision-support
+        framework. Emergency managers are expected to use this application in
+        conjunction with real-time NWS watches, warnings, and advisories; direct
+        field observation; stream gauge and rain gauge network data; coordination
+        with NWS Salt Lake City forecasters; and their professional knowledge of
+        local terrain, drainage behavior, and community conditions. No automated
+        system can fully account for the complexity of real-world flash flood
+        events. The final authority for all protective actions, public
+        notifications, and emergency response decisions rests solely with the
+        responsible emergency management official.</p>
+      </section>
+
+      <section class="liability">
+        <h2>Limitation of Liability</h2>
+        <p>Consor North America, Inc. developed and delivered the FWFS as a
+        professional service to Carbon County Office of Emergency Management.
+        While every reasonable effort has been made to ensure the accuracy,
+        reliability, and operational usefulness of this application,
+        <b>Consor North America, Inc. makes no warranty, express or implied,
+        regarding the completeness, accuracy, fitness for a particular purpose,
+        or uninterrupted availability of the application or any data it
+        displays.</b> Consor North America, Inc. shall not be liable for any
+        flood-related loss, personal injury, death, property damage, or other
+        consequence arising from the use of, reliance upon, failure of, or
+        inability to access this application, whether or not the application was
+        functioning as intended at the time of the event. By using this
+        application, users assume all risks associated with reliance on the
+        information provided.</p>
+      </section>
+
+      <section class="official">
+        <h2>Official Warnings Are Issued Exclusively by the National Weather
+            Service</h2>
+        <p>Flash Flood Watches, Warnings, and Advisories are the sole authority
+        of the NWS Weather Forecast Office in Salt Lake City, Utah. The FWFS
+        does not issue, authorize, supersede, or substitute for any official NWS
+        product.</p>
+      </section>
+
+    </div>
+
+    <div class="doc-footer">
+      <div class="ver">Adopted: June 4, 2026</div>
+      <div>Consor North America, Inc. &middot; Carbon County OEM &middot; Price, Utah</div>
+    </div>
+  </div>
+
+  <footer class="page">Carbon County Flood Warning &amp; Forecast System</footer>
+
+</div>
+</body>
+</html>

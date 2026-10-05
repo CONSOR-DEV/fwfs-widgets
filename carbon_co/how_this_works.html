@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How This Works | FWFS</title>
+<style>
+  :root {
+    --navy: #0E3A5C;
+    --navy-deep: #0A2C47;
+    --cream: #F5F1E8;
+    --blue-accent: #8FC9F2;
+    --blue-soft: #B9DDF5;
+    --text-muted: #C9D4DC;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+    background: var(--navy);
+    color: var(--cream);
+    padding: 28px 26px 22px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+
+  h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin-bottom: 4px;
+  }
+  .tagline {
+    font-size: 15px;
+    font-style: italic;
+    color: var(--blue-accent);
+    margin-bottom: 18px;
+  }
+
+  .lead {
+    background: var(--navy-deep);
+    border-left: 4px solid var(--blue-accent);
+    padding: 12px 16px;
+    font-size: 15.5px;
+    margin-bottom: 24px;
+    border-radius: 0 6px 6px 0;
+  }
+  .lead strong { color: var(--blue-soft); }
+
+  .step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .step-num {
+    flex: 0 0 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--blue-accent);
+    color: var(--navy-deep);
+    font-weight: bold;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+  }
+  .step h2 {
+    font-size: 16.5px;
+    font-weight: bold;
+    color: var(--blue-soft);
+    margin-bottom: 4px;
+  }
+  .step p {
+    font-size: 14.5px;
+    color: var(--cream);
+  }
+  .step p + p { margin-top: 8px; }
+
+  .ref-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--blue-accent);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(143, 201, 242, 0.5);
+    padding-bottom: 1px;
+  }
+  .ref-link:hover { color: var(--blue-soft); border-bottom-color: var(--blue-soft); }
+
+  .caveat {
+    border-top: 1px solid rgba(143, 201, 242, 0.35);
+    margin-top: 6px;
+    padding-top: 14px;
+    font-size: 13.5px;
+    font-style: italic;
+    color: var(--text-muted);
+  }
+  .guidance {
+    font-weight: bold;
+    font-size: 15px;
+    color: var(--cream);
+  }
+
+  .footer-tag {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0.04em;
+    color: var(--blue-accent);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>How this works</h1>
+  <div class="tagline">Live data. Pre-modeled flooding.</div>
+
+  <div class="lead">
+    This map does <strong>not</strong> model flooding in real time. It selects from a
+    library of flood scenarios that were modeled in advance, using live rainfall data
+    to pick the closest match.
+  </div>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div>
+      <h2>Building the representative storm</h2>
+      <p>We analyzed the rainfall patterns of roughly <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: N]</span> real monsoon storms over the
+      Carbon County FWFS watersheds using gauge-adjusted radar rainfall, and
+      combined them into a single representative storm for this area.</p>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div>
+      <h2>Building the scenario ensemble</h2>
+      <p>We placed that storm at <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: N]</span> locations where monsoon storm centers typically
+      develop (<span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: list Carbon storm positions]</span>) and scaled its
+      rainfall from 50% up to 150% of the representative storm. Each storm location and
+      rainfall level combination was run through a detailed hydraulic model (HEC-RAS)
+      ahead of time to map where floodwater would go and how deep it would get.</p>
+      <p>The percentages scale how much total rain falls, not how the storm unfolds over
+      time. A 150% scenario is the same storm dropping one and a half times as much rain;
+      a 50% scenario is the same storm at half. The timing pattern stays the same across
+      every level.</p>
+      <a class="ref-link" href="representative_storm.html">See the storm depths behind each scenario &rarr;</a>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div>
+      <h2>Matching live rainfall</h2>
+      <p>When rain falls over the watersheds, this system automatically compares live
+      radar rainfall estimates (NOAA MRMS) against the ensemble and displays the
+      pre-modeled scenario that most closely matches the storm's location and
+      intensity, along with the buildings inside that scenario's flood extent.</p>
+    </div>
+  </div>
+
+  <div class="caveat">
+    Real storms rarely match a scenario exactly. A storm centered between two modeled
+    locations, or stronger than the largest modeled scenario, can produce flooding that
+    differs from what is shown. <span class="guidance">Treat this display as guidance,
+    not a precise prediction.</span>
+  </div>
+
+  <div class="footer-tag">LIVE DATA &middot; PRE-MODELED FLOODING</div>
+
+</div>
+</body>
+</html>

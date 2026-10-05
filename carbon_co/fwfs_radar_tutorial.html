@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- TODO(carbon_co): WeatherWise links recentred on Carbon AOI but still use rt=KGJX; decide KMTX vs KGJX. Fill [TBD] basin names. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWFS Radar Products Tutorial &mdash; Carbon County OEM</title>
+<style>
+  :root{
+    --navy:#1c3a5e;
+    --navy-deep:#102a47;
+    --accent:#2e75b6;
+    --tbl-head:#d5e8f0;
+    --tbl-stripe:#f3f8fb;
+    --box-bg:#eaf2f8;
+    --box-border:#bcd4e6;
+    --rule:#cdd9e4;
+    --text:#222;
+    --muted:#5a6b7b;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:Calibri,"Segoe UI",Arial,sans-serif;
+    color:var(--text);
+    background:#e9edf1;
+    line-height:1.5;
+    font-size:16px;
+  }
+
+  /* ---------- Banner ---------- */
+  .banner{
+    background:linear-gradient(135deg,var(--navy-deep),var(--navy));
+    color:#fff;
+    padding:26px 40px 30px;
+    text-align:center;
+  }
+  .banner img{height:46px;width:auto;display:block;margin:0 auto 18px;}
+  .banner h1{
+    margin:0;
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:30px;
+    font-weight:700;
+    letter-spacing:.3px;
+  }
+  .banner h2{
+    margin:6px 0 14px;
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:23px;
+    font-weight:700;
+    color:#cfe2f2;
+  }
+  .banner .sub{font-size:17px;font-weight:600;margin:2px 0;}
+  .banner .sub.alt{font-weight:400;color:#d8e6f2;font-size:15px;}
+  .banner .adopted{
+    margin-top:16px;font-size:14px;color:#b9cfe2;
+    border-top:1px solid rgba(255,255,255,.25);
+    display:inline-block;padding-top:10px;
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:960px;margin:0 auto;background:#fff;box-shadow:0 0 24px rgba(0,0,0,.12);}
+  .content{padding:34px 48px 60px;}
+
+  /* ---------- Purpose box ---------- */
+  .purpose{
+    background:var(--box-bg);
+    border:1px solid var(--box-border);
+    border-left:5px solid var(--accent);
+    border-radius:4px;
+    padding:16px 20px;
+    margin:0 0 30px;
+    font-size:15px;
+  }
+  .purpose strong{color:var(--navy);}
+
+  /* ---------- Headings ---------- */
+  h2.sec, h3.sub{
+    font-family:Georgia,"Times New Roman",serif;
+    color:var(--navy);
+    font-weight:700;
+  }
+  h2.sec{
+    font-size:24px;
+    margin:38px 0 12px;
+    padding-bottom:6px;
+    border-bottom:2px solid var(--accent);
+  }
+  h3.sub{font-size:19px;margin:26px 0 8px;}
+  p{margin:0 0 12px;}
+  ul{margin:0 0 14px;padding-left:24px;}
+  li{margin:0 0 6px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* ---------- Tables ---------- */
+  table{
+    border-collapse:collapse;
+    width:100%;
+    margin:14px 0 22px;
+    font-size:14px;
+  }
+  th,td{
+    border:1px solid var(--rule);
+    padding:9px 11px;
+    text-align:left;
+    vertical-align:top;
+  }
+  th{background:var(--tbl-head);color:var(--navy);font-weight:700;}
+  tbody tr:nth-child(even){background:var(--tbl-stripe);}
+  td.ctr,th.ctr{text-align:center;white-space:nowrap;}
+
+  /* ---------- Threat color chips ---------- */
+  .chip{display:inline-block;padding:2px 9px;border-radius:3px;font-weight:700;font-size:13px;color:#fff;}
+  .chip.monitor{background:#3c8c40;}
+  .chip.elevated{background:#d6a400;color:#3a2e00;}
+  .chip.high{background:#e06c00;}
+  .chip.critical{background:#c0392b;}
+
+  /* ---------- TOC ---------- */
+  .toc{
+    background:#f6f9fb;
+    border:1px solid var(--rule);
+    border-radius:5px;
+    padding:18px 24px;
+    margin:0 0 30px;
+  }
+  .toc h4{margin:0 0 10px;font-family:Georgia,serif;color:var(--navy);font-size:17px;}
+  .toc ol{margin:0;padding-left:22px;columns:2;column-gap:34px;font-size:14px;}
+  .toc li{margin:0 0 5px;}
+
+  /* ---------- Disclaimer ---------- */
+  .disclaimer{
+    background:#fbfaf6;
+    border:1px solid #e3ddc7;
+    border-left:5px solid #c7a93b;
+    border-radius:4px;
+    padding:18px 22px;
+    margin-top:14px;
+    font-size:14px;
+  }
+  .disclaimer p strong{color:var(--navy-deep);}
+
+  .note{font-size:13px;color:var(--muted);font-style:italic;margin-top:-6px;}
+
+  /* ---------- Footer ---------- */
+  footer{
+    background:var(--navy-deep);
+    color:#c3d3e2;
+    text-align:center;
+    padding:22px 30px;
+    font-size:13px;
+  }
+  footer img{height:26px;margin-bottom:10px;opacity:.95;}
+  footer a{color:#9ec3e2;}
+
+  /* ---------- Back to top ---------- */
+  .top-link{display:inline-block;font-size:13px;color:var(--accent);margin-top:4px;}
+
+  @media (max-width:680px){
+    .content{padding:24px 20px 44px;}
+    .banner{padding:22px 20px 26px;}
+    .banner h1{font-size:24px;}
+    .banner h2{font-size:19px;}
+    .toc ol{columns:1;}
+    table{font-size:13px;}
+    th,td{padding:7px 8px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== BANNER ===== -->
+  <header class="banner" id="top">
+    <img src="https://consor-dev.github.io/fwfs-widgets/CE_Logo_RGB_Horz-White-Color.png" alt="Consor">
+    <h1>Flood Warning &amp; Forecasting System (FWFS)</h1>
+    <h2>Radar Products Tutorial</h2>
+    <div class="sub">Emergency Manager Quick Guide</div>
+    <div class="sub">Carbon County, Utah</div>
+    <div class="sub alt">Prepared for Carbon County Office of Emergency Management &middot; Price, Utah</div>
+    <div class="adopted">Adopted by Consor North America, Inc. &mdash; May 5, 2026</div>
+  </header>
+
+  <div class="content">
+
+    <!-- ===== PURPOSE ===== -->
+    <div class="purpose">
+      <strong>Purpose:</strong> This guide explains the three core nowcast radar products used in the Carbon County Flood Warning and Forecast System (FWFS): MRMS Base Reflectivity, MRMS Radar-Only QPE, and the MRMS QPE-to-Flash Flood Guidance ratio. It translates radar science into practical, actionable guidance for flash flood response across Carbon County. It is written for non-meteorologist emergency managers and focuses on what each product can and cannot tell you, how to interpret thresholds in the context of local terrain, and what actions to take at each level of concern.
+    </div>
+
+    <!-- ===== TOC ===== -->
+    <nav class="toc">
+      <h4>Contents</h4>
+      <ol>
+        <li><a href="#overview">Weather Radar Overview</a></li>
+        <li><a href="#s1">What this guide covers</a></li>
+        <li><a href="#s2">Radar basics</a></li>
+        <li><a href="#s3">MRMS Radar-Only QPE</a></li>
+        <li><a href="#s4">Flash Flood Guidance &amp; the QPE/FFG ratio</a></li>
+        <li><a href="#s5">Recommended decision sequence</a></li>
+        <li><a href="#s6">Special situations</a></li>
+        <li><a href="#s7">Quick reference thresholds</a></li>
+        <li><a href="#s8">Operational reminders</a></li>
+        <li><a href="#s9">Recommended training resources</a></li>
+        <li><a href="#s10">Key contacts and resources</a></li>
+        <li><a href="#s11">Disclaimer</a></li>
+      </ol>
+    </nav>
+
+    <!-- ===== OVERVIEW ===== -->
+    <h2 class="sec" id="overview">Weather Radar Overview</h2>
+    <p>Doppler weather radars are critical for understanding the weather; they allow us to &ldquo;see&rdquo; inside clouds and help us to observe what is really happening. Engineers, technicians, and scientists collectively design, develop, and operate the advanced radar technology used to study the atmosphere.</p>
+    <p>Doppler weather radars are remote sensing instruments and are capable of detecting particle type (rain, snow, hail, insects, etc.), intensity, and motion. Radar data can be used to determine the structure of storms and to help with predicting severity of storms. Energy is emitted in various frequencies and wavelengths from longer-wavelength radio waves to shorter-wavelength gamma rays. Radars emit microwave energy, a longer-wavelength form of energy that is invisible and inaudible to humans.</p>
+    <p>The radar transmits a focused pulse of microwave energy (just like a microwave oven or a cell phone, but stronger) at an object, most likely a cloud and/or rain shaft. Part of this beam of energy bounces back and is measured by the radar, providing information about the object. Radar can measure precipitation size, quantity, speed and direction of movement within about a 100-mile radius of its location.</p>
+    <p>Doppler radar is a specific type of radar that uses the Doppler effect to gather velocity data from the particles that are being measured. For example, a Doppler radar transmits a signal that gets reflected off raindrops within a storm. The reflected radar signal is measured by the radar&rsquo;s receiver as a change in frequency. That frequency shift is directly related to the motion of the raindrops.</p>
+    <p>Although the development and use of Doppler radar have dramatically improved weather forecasting and warning, it is still an imperfect tool that requires some accommodation for each individual situation and location. The following sections will provide guidance for the operational use of Doppler and an understanding of its application for emergency response.</p>
+
+    <!-- ===== 1 ===== -->
+    <h2 class="sec" id="s1">1. What this guide covers</h2>
+    <p>This guide explains the three core nowcast products used in the Flood Warning Forecasting System (FWFS) related to the use of Doppler radar and MRMS products: base reflectivity, radar-estimated rainfall (QPE), and the QPE-to-Flash Flood Guidance ratio. The goal is not to turn an emergency manager into a meteorologist. The goal is to help you answer three practical questions quickly:</p>
+    <ul>
+      <li>Is heavy rain developing over a drainage that matters?</li>
+      <li>How much rain is estimated to have fallen recently?</li>
+      <li>Is rainfall approaching or exceeding guidance values that are often associated with flash flooding?</li>
+    </ul>
+    <p>For Carbon County operations, the most important component of situational awareness is location. The same storm intensity can mean different things depending on whether it is over <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: Carbon headwater basins]</span> or other steep headwaters versus over lower valley locations.</p>
+
+    <h3 class="sub">The three products, in plain language</h3>
+    <table>
+      <thead>
+        <tr><th>Product</th><th>Web URL</th><th>What it shows</th><th>Best use</th><th>Main caution</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>MRMS Base Reflectivity</td>
+          <td><a href="https://web.weatherwise.app/#map=8.23/39.612/-110.744&amp;rt=KGJX&amp;rp=REF0&amp;m=COMPOSITE" target="_blank" rel="noopener">Open in WeatherWise</a></td>
+          <td>Where precipitation is occurring and how intense the radar return is</td>
+          <td>Track storm position, growth, and motion</td>
+          <td>High reflectivity can also include hail, snow, or bright-band effects</td>
+        </tr>
+        <tr>
+          <td>MRMS Radar-Only QPE</td>
+          <td><a href="https://web.weatherwise.app/#map=8.23/39.612/-110.744&amp;rt=KGJX&amp;rp=REF0&amp;m=COMPOSITE&amp;cid=USA/MRMS&amp;cr=CONUS&amp;cp=RadarOnly_QPE_01H" target="_blank" rel="noopener">Open in WeatherWise</a></td>
+          <td>Estimated rainfall accumulation from radar data but not gauge-corrected</td>
+          <td>See where rainfall is adding up over 15-minute, 1, 3, 6, or 24 hour windows</td>
+          <td>It is an estimate, not a direct rain-gauge measurement</td>
+        </tr>
+        <tr>
+          <td>MRMS QPE/FFG Ratio</td>
+          <td><a href="https://web.weatherwise.app/#map=8.23/39.612/-110.744&amp;rt=KGJX&amp;rp=REF0&amp;m=COMPOSITE&amp;cid=USA/MRMS&amp;cr=CONUS&amp;cp=FLASH_QPE_FFG01H" target="_blank" rel="noopener">Open in WeatherWise</a></td>
+          <td>How observed radar-estimated rain compares with flash flood guidance</td>
+          <td>Rapid triage of which basins are nearing or exceeding guidance</td>
+          <td>Guidance is generalized and should never be treated as a guarantee</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== 2 ===== -->
+    <h2 class="sec" id="s2">2. Radar basics</h2>
+
+    <h3 class="sub">2.1 How the local radar picture is built</h3>
+    <p>Carbon County sits between two NWS WSR-88D radars at roughly the same distance, about 230&nbsp;km from each: KMTX (Promontory Point, to the northwest) and KGJX (Grand Mesa, to the east). At that range the lowest scan passes well above the ground, and the Wasatch Plateau and Book Cliffs can block or partially sample the lowest angles. Shallow or low-topped storms can be under-sampled, which is one reason MRMS (which blends radars) and gauges matter here. <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: confirm coverage / beam-blockage notes for Carbon basins]</span></p>
+    <p>In the FWFS, you will usually look at MRMS products in addition to the single-site KGJX view. MRMS creates a mosaic using multiple radars and other inputs, which helps fill coverage gaps and creates more consistent national products. For situational awareness in canyon country, that broader MRMS view is often more useful than looking at one radar alone.</p>
+    <ul>
+      <li>Use KGJX reflectivity to see the raw storm structure and looping motion.</li>
+      <li>Use MRMS reflectivity to better understand the broader precipitation footprint.</li>
+      <li>If radar and gauges disagree, do not blindly trust either one. Compare both and lean on local knowledge of terrain and historic basin hydrologic response.</li>
+    </ul>
+
+    <h3 class="sub">2.2 How to think about dBZ</h3>
+    <p>Reflectivity is measured in dBZ (decibels of radar reflectivity). Higher dBZ usually means heavier precipitation, but it does not translate perfectly to rain rate because the radar return can be affected by rain drop size, hail, melting snow, beam height, and evaporation below the cloud base.</p>
+    <table>
+      <thead>
+        <tr><th>Radar dBZ range</th><th>Plain-language interpretation</th><th>Operational meaning for EMs</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="ctr">Below 20</td><td>Little or no meaningful precipitation reaching the ground, or very light precipitation</td><td>Usually low concern unless conditions are changing quickly</td></tr>
+        <tr><td class="ctr">20&ndash;30</td><td>Light precipitation</td><td>Watch storm placement and motion; flooding concern is usually low by itself</td></tr>
+        <tr><td class="ctr">30&ndash;40</td><td>Light to moderate rain</td><td>Continue monitoring, especially if the storm is over steep headwaters</td></tr>
+        <tr><td class="ctr">40&ndash;45</td><td>Moderate to heavy rain</td><td>Potentially meaningful runoff if the cell is persistent or slow-moving or nearly stationary over the basin</td></tr>
+        <tr><td class="ctr">45&ndash;50</td><td>Heavy rain</td><td>Concern rises quickly in small, steep drainages</td></tr>
+        <tr><td class="ctr">50&ndash;55</td><td>Very heavy rain; hail may also be present</td><td>High concern if sustained over a sensitive basin</td></tr>
+        <tr><td class="ctr">Above 55</td><td>Very intense core; torrential rain and/or hail possible</td><td>Treat as a serious flash-flood signal when over critical headwaters</td></tr>
+      </tbody>
+    </table>
+    <p>A useful rule of thumb: for flash-flood operations, storm behavior and movement often matters more than one exact dBZ number. A 46 dBZ cell that stalls over a basin's headwaters can be more dangerous than a 55 dBZ core that moves quickly away from the basin or over a very small portion of the edge of the basin. Keep in mind that flooding is about rainfall volume, so a stationary thunderstorm is more dangerous than one that may be very powerful but is moving quickly over the region.</p>
+
+    <h3 class="sub">2.3 Radar features that matter most</h3>
+    <ul>
+      <li><strong>Growing convective cores:</strong> compact cells intensifying over the Wasatch Plateau, Book Cliffs, or nearby high terrain.</li>
+      <li><strong>Slow motion or training:</strong> repeated cells over the same drainage are often the most dangerous setup.</li>
+      <li><strong>Upstream position:</strong> rainfall in the upper watershed matters more than rainfall near the basin outlet at the Colorado River.</li>
+      <li><strong>Persistence:</strong> a moderate cell lasting 45 to 60 minutes can be more important than a brief stronger pulse.</li>
+    </ul>
+
+    <!-- ===== 3 ===== -->
+    <h2 class="sec" id="s3">3. MRMS Radar-Only QPE</h2>
+
+    <h3 class="sub">3.1 What QPE is</h3>
+    <p>QPE stands for Quantitative Precipitation Estimate. In the case of MRMS data, it is radar-only QPE, meaning the rainfall estimate is derived from radar rather than directly from gauges. In operational use, this is valuable because it shows where rainfall is adding up from storm cells moving within or across the basin.</p>
+    <p>For MRMS radar-only QPE, the <strong>1-hour accumulation</strong> is updated every 2 minutes (that is, every 2 minutes, there is a new 1-hour accumulation). MRMS also has a 15-minute radar-only QPE that will be linked in the FWFS. Longer-duration accumulations such as 3, 6, 12, and 24 hours are commonly refreshed hourly and are available independently on the WeatherWise application. The 15-minute and 1-hour layers are best for short-fuse flash-flood monitoring, while the longer windows are more useful for event context and antecedent wetness. The table below identifies primary uses for each time window provided by the MRMS data.</p>
+    <table>
+      <thead>
+        <tr><th>Window</th><th>Best question it answers</th><th>Primary value in Carbon County operations</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="ctr">15-minute</td><td>What has fallen recently?</td><td>Most useful short-fuse flash-flood storms</td></tr>
+        <tr><td class="ctr">1-hour</td><td>What has fallen recently?</td><td>Most useful short-fuse flash-flood storms</td></tr>
+        <tr><td class="ctr">3-hour</td><td>Has rainfall persisted?</td><td>Helps identify sustained multi-cell events</td></tr>
+        <tr><td class="ctr">6-hour</td><td>How wet has the basin become during this event?</td><td>Useful when storms repeat through the day</td></tr>
+        <tr><td class="ctr">24-hour</td><td>How much rain has fallen overall?</td><td>Context for antecedent wetness and lowered tolerance to new rain</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub">3.2 Practical QPE thresholds</h3>
+    <p>The values in the table below are screening thresholds, <strong><em>not automatic trigger points</em></strong>. Basin response depends on where the rain fell, how quickly it fell, prior wetness, and whether the rain is still ongoing.</p>
+    <table>
+      <thead>
+        <tr><th>1-hour QPE</th><th>How to interpret it</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="ctr">Below 0.25 inch</td><td>Usually below flash-flood concern by itself but still watch storm trend and location.</td></tr>
+        <tr><td class="ctr">0.25 to 0.50 inch</td><td>Meaningful rainfall. Start paying closer attention if it is over steep upper watersheds.</td></tr>
+        <tr><td class="ctr">0.50 to 0.75 inch</td><td>A concern level in many canyon settings, especially if rainfall is still continuing.</td></tr>
+        <tr><td class="ctr">0.75 to 1.00 inch</td><td>High concern in small, flashy basins. Compare immediately with QPE/FFG and any gauges.</td></tr>
+        <tr><td class="ctr">Above 1.00 inch</td><td>Serious flash-flood concern, especially if rain fell in the headwaters and the storm remains active.</td></tr>
+      </tbody>
+    </table>
+    <p>Because radar estimates are imperfect, use QPE as a decision-support layer rather than a stand-alone truth source. Radar can underestimate rain in complex terrain and can overestimate rainfall when hail, bright banding, or other artifacts are present.</p>
+
+    <h3 class="sub">3.3 Common QPE limitations</h3>
+    <ul>
+      <li><strong>Virga:</strong> radar sees precipitation aloft, but some or all of it evaporates before reaching the ground. This usually occurs when the surface dew point temperature (think: low humidity) is low.</li>
+      <li><strong>Bright band:</strong> melting snow can temporarily inflate reflectivity and rainfall estimates.</li>
+      <li><strong>Hail contamination:</strong> a strong core with hail can look wetter than the actual rain reaching the surface.</li>
+      <li><strong>Terrain and beam height:</strong> the radar may sample storms higher above the ground as distance increases, which can miss near-surface details.</li>
+    </ul>
+
+    <!-- ===== 4 ===== -->
+    <h2 class="sec" id="s4">4. Flash Flood Guidance and the QPE/FFG ratio</h2>
+
+    <h3 class="sub">4.1 What Flash Flood Guidance means</h3>
+    <p>Flash Flood Guidance, or FFG, is an estimate of how much rainfall over a stated duration would typically be needed to cause small streams to flood. It is produced by NWS River Forecast Centers and used by local NWS forecast offices when they evaluate flash-flood watch and warning needs.</p>
+    <p>FFG is best treated as a planning threshold, not an exact trigger number. It assumes rainfall is reasonably distributed over a basin and does not perfectly represent every steep side drainage, burn scar, slickrock area, slot canyon, or debris-prone reach. In canyon country, dangerous impacts can occur before a basin-average threshold is fully met.</p>
+    <ul>
+      <li>FFG can change as soils wet up or dry out.</li>
+      <li>FFG values from the Colorado Basin RFC are typically updated every 1&ndash;6 hours, while MRMS QPE refreshes every 2 minutes &mdash; meaning the QPE/FFG ratio can shift rapidly during active rainfall even if FFG itself hasn&rsquo;t been reissued by the RFC.</li>
+    </ul>
+
+    <h3 class="sub">4.2 Reading the ratio</h3>
+    <p>A ratio of 1.0 means radar-estimated rain has reached the guidance value. Values below 1.0 mean rainfall is still below guidance. Values above 1.0 mean the guidance threshold has been met or exceeded. This product is excellent for quickly identifying where concern is highest, but it should always be interpreted with radar loops, terrain awareness, and any available rain gauges.</p>
+    <table>
+      <thead>
+        <tr><th>QPE/FFG ratio</th><th>Interpretation</th><th>Suggested EM posture</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="ctr">Below 0.50</td><td>Below guidance and usually lower concern</td><td>Monitor</td></tr>
+        <tr><td class="ctr">0.50 to 0.75</td><td>Approaching a meaningful fraction of guidance</td><td>Increase awareness and prepare notifications</td></tr>
+        <tr><td class="ctr">0.75 to 1.00</td><td>Near guidance; basin may be becoming sensitive</td><td>High attention, especially if rain is ongoing</td></tr>
+        <tr><td class="ctr">1.00 to 1.50</td><td>Guidance met or exceeded</td><td>Treat as likely flood-producing in vulnerable drainages; coordinate immediately</td></tr>
+        <tr><td class="ctr">Above 1.50</td><td>Guidance clearly exceeded</td><td>Potentially dangerous situation; protective actions may be needed now</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Important correction for operations:</strong> a QPE/FFG exceedance does not mean that NWS will automatically issue a Flash Flood Warning, nor does it authorize local officials to issue one on NWS&rsquo;s behalf. NWS issues flash flood watches and warnings based on their own meteorological assessment. Local emergency management may, under county protocol and authorization, send local alerts or IPAWS/WEA messages in coordination with the NWS warning picture.</p>
+
+    <h3 class="sub">4.3 A good scan order</h3>
+    <ul>
+      <li>First, find the highest ratio values.</li>
+      <li>Second, match those values to named drainages and populated or recreation areas downstream.</li>
+      <li>Third, loop reflectivity to see whether rain is still moving into the same basin or location.</li>
+      <li>Fourth, check gauges, spotter reports, cameras (once installed) and local field observations if available.</li>
+    </ul>
+
+    <!-- ===== 5 ===== -->
+    <h2 class="sec" id="s5">5. Recommended decision sequence during an event</h2>
+    <p>A simple decision sequence is usually more useful than memorizing numbers. Use the same order every time:</p>
+    <ol>
+      <li>Loop radar reflectivity for the last 30 to 60 minutes.</li>
+      <li>Identify whether the active core is over a sensitive headwater basin.</li>
+      <li>Check 15-minute and 1-hour QPE to see whether rainfall is accumulating meaningfully with a thunderstorm.</li>
+      <li>Check the QPE/FFG ratio to see whether the basin under the storm is nearing or exceeding guidance.</li>
+      <li>Cross-check with gauges, stream response, spotter reports, and road or recreation reports.</li>
+      <li>Coordinate with NWS Salt Lake City on warning status and expected storm evolution.</li>
+      <li>Follow local notification and protective-action protocols, including any local IPAWS/WEA procedures if authorized.</li>
+    </ol>
+    <p>The table below shows how these steps apply at each stage of concern for <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: example basin]</span> &ndash; each escalating stage activates additional steps from the sequence above.</p>
+
+    <h3 class="sub">An example for a Carbon County basin</h3>
+    <table>
+      <thead>
+        <tr><th>Stage</th><th>Key Steps</th><th>What you see</th><th>Good EM response</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="chip monitor">Early monitoring</span></td>
+          <td class="ctr">Steps 1&ndash;2</td>
+          <td>35&ndash;45 dBZ cells forming over the upper watershed; 1-hour QPE still low; ratio well below 0.50</td>
+          <td>Monitor closely and brief on-call staff if the cells are drifting into <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: basin names]</span> headwaters.</td>
+        </tr>
+        <tr>
+          <td><span class="chip elevated">Elevated concern</span></td>
+          <td class="ctr">Steps 1&ndash;4</td>
+          <td>Persistent 45&ndash;50 dBZ cell over middle or upper basin; 1-hour QPE climbing through roughly 0.25 to 0.50 inch; QPE/FFG ratio nearing 0.50 to 0.75</td>
+          <td>Increase monitoring frequency, begin drafting notifications, and check gauges and recreation exposure.</td>
+        </tr>
+        <tr>
+          <td><span class="chip high">High concern</span></td>
+          <td class="ctr">Steps 1&ndash;6</td>
+          <td>Slow-moving or training cells; 1-hour QPE around 0.50 inch or more; FFG ratio 0.75 to near 1.0</td>
+          <td>Coordinate with NWS immediately, prepare protective actions, and consider local public messaging under county protocol.</td>
+        </tr>
+        <tr>
+          <td><span class="chip critical">Critical concern</span></td>
+          <td class="ctr">All 7</td>
+          <td>Heavy rain continues in the headwaters; ratio at or above 1.0; gauges or field reports show response</td>
+          <td>Assume dangerous runoff is possible or underway. Act on local protective measures and support NWS warning messaging.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>For Carbon County&rsquo;s steep drainages, the most useful operational mindset is not &lsquo;wait for the perfect threshold.&rsquo; It is &lsquo;recognize a worsening trend early enough to give people time to move out of harm&rsquo;s way.&rsquo;</p>
+
+    <!-- ===== 6 ===== -->
+    <h2 class="sec" id="s6">6. Special situations</h2>
+
+    <h3 class="sub">6.1 Virga and dry sub-cloud air</h3>
+    <p>In Carbon County, precipitation often begins as virga. You may see radar echoes aloft before meaningful rain reaches the ground. That does not mean the storm is harmless. It means you should watch whether the lower atmosphere is moistening and whether QPE and gauges begin to catch up to the radar signature.</p>
+
+    <h3 class="sub">6.2 Snow, mixed precipitation, and bright banding</h3>
+    <p>In spring and fall, high terrain can be cold enough for snow or mixed precipitation. During these cases, reflectivity and QPE may be less representative of liquid rainfall over the highest elevations. Flood response may also be slower and more complex if rain-on-snow or snowmelt is involved.</p>
+
+    <h3 class="sub">6.3 Hail contamination</h3>
+    <p>Very high reflectivity does not always mean extreme rainfall. Hail can produce a very strong radar return. If you see an intense core but QPE does not increase as quickly as expected, hail may be part of the reason.</p>
+
+    <!-- ===== 7 ===== -->
+    <h2 class="sec" id="s7">7. Quick reference thresholds</h2>
+    <table>
+      <thead>
+        <tr><th>Threat posture</th><th>Radar clues</th><th>QPE clue</th><th>QPE/FFG clue</th><th>Best action</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="chip monitor">Monitor</span></td>
+          <td>Cells below about 40 dBZ or moving away from key basins</td>
+          <td>Below about 0.25 inch in 1 hour</td>
+          <td class="ctr">Below 0.50</td>
+          <td>Routine monitoring</td>
+        </tr>
+        <tr>
+          <td><span class="chip elevated">Elevated</span></td>
+          <td>40 to 50 dBZ over or moving into headwaters</td>
+          <td>About 0.25 to 0.50 inch</td>
+          <td class="ctr">0.50 to 0.75</td>
+          <td>Alert staff and prepare messaging</td>
+        </tr>
+        <tr>
+          <td><span class="chip high">High</span></td>
+          <td>45 to 55 dBZ, slow-moving, repeating, or expanding over basin</td>
+          <td>About 0.50 to 1.00 inch</td>
+          <td class="ctr">0.75 to 1.00</td>
+          <td>Coordinate with NWS and prepare protective actions</td>
+        </tr>
+        <tr>
+          <td><span class="chip critical">Critical</span></td>
+          <td>Very intense or persistent core over headwaters, especially with ongoing rain</td>
+          <td>Near or above 1.00 inch</td>
+          <td class="ctr">At or above 1.00</td>
+          <td>Support warning actions and execute local emergency procedures</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ===== 8 ===== -->
+    <h2 class="sec" id="s8">8. Operational reminders</h2>
+    <ul>
+      <li>NWS issues Flash Flood Watches and Flash Flood Warnings.</li>
+      <li>Local officials may issue local alerts, closures, evacuation messaging, or IPAWS/WEA alerts if authorized by local protocol.</li>
+      <li>Do not wait for a perfect one-number trigger when storm placement and trend already show a serious threat.</li>
+      <li>In steep canyon terrain, headwater location and storm persistence are often more important than basin-average amounts alone.</li>
+      <li>Use radar, QPE, QPE/FFG, gauges, spotters, and field observations together.</li>
+    </ul>
+
+    <!-- ===== 9 ===== -->
+    <h2 class="sec" id="s9">9. Recommended training resources and videos</h2>
+    <p>The following curated resources are recommended for building foundational radar literacy. All are accessible to non-meteorologists and directly applicable to the types of weather threats faced in Carbon County.</p>
+    <p class="note">* COMET modules require signing up for a free account to access. Register at <a href="https://learn.meted.ucar.edu/#/signup-form" target="_blank" rel="noopener">learn.meted.ucar.edu</a>.</p>
+    <table>
+      <thead>
+        <tr><th>Resource Title</th><th>Source</th><th>Why It Matters for Carbon County / FWFS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><a href="https://learn.meted.ucar.edu/" target="_blank" rel="noopener">Weather Radar Fundamentals</a> *</td><td>UCAR COMET MetEd</td><td>Free, self-paced training. Best all-around primer for non-meteorologists. Covers reflectivity, velocity, and storm structure.</td></tr>
+        <tr><td><a href="https://www.noaa.gov/jetstream/doppler" target="_blank" rel="noopener">Introduction to Doppler Radar</a></td><td>NOAA National Weather Service</td><td>Plain-language overview of WSR-88D operations. Good starting point for any EM.</td></tr>
+        <tr><td><a href="https://learn.meted.ucar.edu/" target="_blank" rel="noopener">Flash Flood Training Modules</a> *</td><td>UCAR COMET MetEd</td><td>A collection of training modules covering topics related to flash floods.</td></tr>
+        <tr><td><a href="https://youtu.be/6YIBV5hKBck" target="_blank" rel="noopener">How to Use WeatherWise Radar &ndash; Official Guide</a></td><td>WeatherWise / YouTube</td><td>WeatherWise YouTube channel demonstrating how to use the WeatherWise application / website.</td></tr>
+        <tr><td><a href="https://youtu.be/nP17Dd7MRy0" target="_blank" rel="noopener">Using Composite / MRMS Data on WeatherWise</a></td><td>WeatherWise / YouTube</td><td>WeatherWise YouTube channel demonstrating how to use various MRMS products on their radar site.</td></tr>
+        <tr><td><a href="https://www.weather.gov/media/owp/oh/hrl/docs/qpe_nws_overview.pdf" target="_blank" rel="noopener">NWS QPE Overview</a></td><td>NWS Training</td><td>NWS QPE informational document.</td></tr>
+        <tr><td><a href="https://www.weather.gov/slc/" target="_blank" rel="noopener">Salt Lake City NWS Office</a></td><td>NWS</td><td>Webpage describing past events with detailed summaries.</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub">9.1 How to use these resources</h3>
+    <p>We recommend the following self-study sequence for an emergency manager new to radar products:</p>
+    <ul>
+      <li>Start with the NWS Doppler Radar overview (NWS JetStream). 15 minutes. This gives you the radar vocabulary.</li>
+      <li>Complete the COMET MetEd &lsquo;Weather Radar Fundamentals&rsquo; module &mdash; approximately 1&ndash;2 hours. This is the single most comprehensive free resource available.</li>
+      <li>Complete the various COMET MetEd Flash Flood Training Modules. Modules vary from 30 minutes to 2 hours each.</li>
+      <li>Review NWS Salt Lake City&rsquo;s past event summaries, especially any Carbon County flood events. Reading post-event analyses with real data is excellent practice.</li>
+      <li>Go through the various WeatherWise tutorials to familiarize yourself with the layout, functionality, and the radar products provided by the WeatherWise application. The FWFS application will have direct widget viewers of various WeatherWise radar products.</li>
+    </ul>
+    <p>After completing these resources, revisit this tutorial&rsquo;s scenario walkthrough (Section 5) and walk through a recent monsoon event from the FWFS historical archive &mdash; if available &mdash; to practice applying these skills with real local data.</p>
+
+    <!-- ===== 10 ===== -->
+    <h2 class="sec" id="s10">10. Key contacts and training resources</h2>
+    <table>
+      <thead>
+        <tr><th>Organization</th><th>Primary use</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>NWS Salt Lake City (WFO SLC)</td><td>Forecast support, watch/warning coordination, local meteorological interpretation</td></tr>
+        <tr><td>Colorado Basin River Forecast Center (CBRFC)</td><td>Flash Flood Guidance and broader hydrologic guidance</td></tr>
+        <tr><td>NOAA MRMS / NSSL documentation</td><td>Product background and technical reference</td></tr>
+        <tr><td>UCAR COMET MetEd</td><td>Foundational radar and flash-flood training for non-meteorologists</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Contact note:</strong> keep the latest local contact information and county-specific escalation procedures in the live FWFS version of this guide so they can be updated without reissuing the full tutorial.</p>
+
+    <!-- ===== 11 ===== -->
+    <h2 class="sec" id="s11">11. Disclaimer</h2>
+    <div class="disclaimer">
+      <p>This tutorial is provided as an educational and operational reference document to support, not replace, the professional judgment of trained emergency management personnel. It is intended to improve familiarity with radar and remotely sensed precipitation products used within the Carbon County Flood Warning and Forecast System (FWFS). It does not constitute an official flood forecast, warning, or emergency operations directive.</p>
+      <p><strong>Thresholds are screening values, not guaranteed triggers.</strong> The reflectivity, QPE accumulation, and QPE/FFG ratio thresholds described in this tutorial are guidance benchmarks derived from general hydrometeorological practice. They do not account for every combination of antecedent soil moisture, basin geometry, channel condition, sediment loading, or storm behavior that can influence flash flood onset and severity across Carbon County. Conditions may produce flooding at values below these thresholds or may not produce flooding at values above them.</p>
+      <p><strong>Flash Flood Guidance (FFG) is a generalized estimate.</strong> FFG values are basin-scale estimates produced by the NWS Colorado Basin River Forecast Center and are not site-specific or real-time measurements. They represent a statistical approximation of the amount of rainfall needed to produce bank-full or greater streamflow at a given location, and they carry inherent uncertainty. Users should not treat FFG exceedance as a definitive indicator that flooding is occurring or imminent, nor should FFG non-exceedance be interpreted as a guarantee that flooding will not occur.</p>
+      <p><strong>Radar data has inherent limitations.</strong> MRMS and KGJX radar estimates are subject to error from beam blockage, range degradation, bright-band contamination, hail contamination, and complex terrain effects common to canyon-country environments. Radar-only QPE, in particular, is an estimate of rainfall &mdash; not a direct gauge measurement &mdash; and may underestimate or overestimate accumulation in any given storm.</p>
+      <p><strong>Human judgment is essential and irreplaceable.</strong> This tutorial is one component of a broader operational decision-support system. Emergency managers are expected to use it in conjunction with real-time NWS products, direct field observation, gauge network data, coordination with NWS Salt Lake City forecasters, and their professional knowledge of local terrain and community conditions. No tutorial, tool, or automated product can substitute for trained situational awareness during an active flood threat.</p>
+      <p><strong>Limitation of liability.</strong> Consor North America, Inc. (also known as Consor Engineers) prepared this tutorial as a professional service to Carbon County Office of Emergency Management. While every effort has been made to ensure the accuracy and operational usefulness of the guidance contained herein, Consor North America, Inc. makes no warranty, express or implied, regarding the completeness, accuracy, or fitness for a particular purpose of the information presented. Consor North America, Inc. shall not be liable for any flood-related loss, injury, damage, or consequence arising from the use of, reliance upon, or misinterpretation of this tutorial or its threshold guidance, whether or not instructions herein were followed.</p>
+      <p><strong>Official warnings are issued exclusively by the National Weather Service.</strong> Flash Flood Watches, Warnings, and Advisories are the sole authority of the NWS. This tutorial does not authorize, supersede, or substitute for any NWS product.</p>
+    </div>
+
+    <p style="margin-top:24px;"><a class="top-link" href="#top">&uarr; Back to top</a></p>
+
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    <img src="https://nateclements.github.io/fwfs-widgets/CE_Logo_RGB_Horz-White-Color.png" alt="Consor">
+    <div>Carbon County Flood Warning &amp; Forecast System (FWFS) &middot; Radar Products Tutorial</div>
+    <div>Prepared by Consor North America, Inc. for Carbon County Office of Emergency Management</div>
+    <div>Adopted by Consor North America, Inc. &mdash; May 5, 2026</div>
+  </footer>
+
+</div>
+</body>
+</html>

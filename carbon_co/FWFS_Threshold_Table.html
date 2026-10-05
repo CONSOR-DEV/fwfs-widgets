@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- TODO(carbon_co): Thresholds were tuned on the Moab basins (Mill/Castle Creek). Re-check against Carbon basin sizes, NDFD point count ('32 points'), and gauge count before go-live. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FWFS Threat Scoring Thresholds — Carbon County Flood Warning &amp; Forecast System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:        #0E3A5D;
+    --navy-deep:   #0A2C47;
+    --card:        #EDF3F8;
+    --line:        #C9D6E2;
+    --ink:         #2E4458;
+    --ink-soft:    #5A7186;
+    --t0:          #6B7C8E;   /* NO THREAT  */
+    --t1:          #3FB6D2;   /* MONITOR    */
+    --t2:          #E3B33C;   /* ELEVATED   */
+    --t3:          #E0843C;   /* HIGH       */
+    --t4:          #CE4B3E;   /* CRITICAL   */
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:'Source Sans 3', 'Segoe UI', sans-serif;
+    background:var(--navy);
+    color:var(--ink);
+    padding:28px 18px 36px;
+  }
+  .wrap{ max-width:1180px; margin:0 auto; }
+
+  /* ---------- header ---------- */
+  header{ color:#fff; margin-bottom:18px; }
+  .eyebrow{
+    font-family:'Barlow Semi Condensed', sans-serif;
+    font-weight:600; font-size:12px; letter-spacing:.22em;
+    text-transform:uppercase; color:#9FC2DB; margin-bottom:6px;
+  }
+  h1{
+    font-family:'Barlow Semi Condensed', sans-serif;
+    font-weight:700; font-size:clamp(22px, 3.4vw, 32px);
+    line-height:1.15; letter-spacing:.01em;
+  }
+  .subtitle{ margin-top:6px; font-size:14px; color:#C7DAE8; max-width:62ch; }
+
+  /* ---------- tier legend strip (signature) ---------- */
+  .tiers{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+    margin:20px 0 10px;
+  }
+  .tier{
+    border-radius:8px 8px 0 0; padding:10px 12px 9px; color:#fff;
+    font-family:'Barlow Semi Condensed', sans-serif;
+  }
+  .tier .num{ font-weight:700; font-size:22px; line-height:1; }
+  .tier .name{ font-weight:600; font-size:13px; letter-spacing:.08em; text-transform:uppercase; margin-top:2px; }
+  .tier .posture{ font-size:11.5px; font-family:'Source Sans 3',sans-serif; opacity:.92; margin-top:3px; }
+  .tier0{ background:var(--t0); } .tier1{ background:var(--t1); }
+  .tier2{ background:var(--t2); } .tier3{ background:var(--t3); }
+  .tier4{ background:var(--t4); }
+
+  /* ---------- table ---------- */
+  .scroll{ overflow-x:auto; border-radius:0 0 10px 10px; }
+  table{
+    width:100%; min-width:920px; border-collapse:separate; border-spacing:0;
+    background:var(--card); font-size:13.5px; line-height:1.42;
+  }
+  th, td{ padding:11px 12px; vertical-align:top; border-bottom:1px solid var(--line); }
+  thead th{
+    background:var(--navy-deep); color:#fff; text-align:left;
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:12.5px; letter-spacing:.1em; text-transform:uppercase;
+    position:sticky; top:0;
+  }
+  thead th:first-child{ width:218px; }
+  td.product{
+    font-weight:600; color:var(--navy); background:#E2EBF3;
+    border-right:1px solid var(--line);
+  }
+  td.product .tag{
+    display:inline-block; margin-top:5px; padding:1px 7px; border-radius:10px;
+    background:var(--navy); color:#CFE2F0; font-size:10.5px; font-weight:600;
+    letter-spacing:.08em; text-transform:uppercase;
+    font-family:'Barlow Semi Condensed', sans-serif;
+  }
+  td.product .src{ display:block; margin-top:4px; font-weight:400; font-size:11.5px; color:var(--ink-soft); }
+  td{ border-right:1px solid var(--line); }
+  td:last-child{ border-right:none; }
+  tr:last-child td{ border-bottom:none; }
+  td .alt{ display:block; margin-top:4px; font-size:12px; color:var(--ink-soft); }
+
+  /* per-tier column accents: thin top keyline echoing the legend */
+  td.c0{ box-shadow:inset 0 3px 0 var(--t0); }
+  td.c1{ box-shadow:inset 0 3px 0 var(--t1); }
+  td.c2{ box-shadow:inset 0 3px 0 var(--t2); }
+  td.c3{ box-shadow:inset 0 3px 0 var(--t3); }
+  td.c4{ box-shadow:inset 0 3px 0 var(--t4); }
+  tr + tr td.c0, tr + tr td.c1, tr + tr td.c2,
+  tr + tr td.c3, tr + tr td.c4{ box-shadow:none; }
+
+  .floor{
+    display:inline-block; margin-top:5px; padding:1px 7px; border-radius:3px;
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+    background:var(--navy); color:#FFD9A8;
+  }
+  .new-row td.product{ background:#D8E7F2; }
+  .new-pill{
+    display:inline-block; margin-left:6px; padding:1px 6px; border-radius:3px;
+    background:var(--t1); color:#fff; font-size:10px; font-weight:700;
+    letter-spacing:.06em; font-family:'Barlow Semi Condensed', sans-serif;
+    vertical-align:2px;
+  }
+
+  /* ---------- per-window scoring cards ---------- */
+  .win-head{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color:#9FC2DB; margin:22px 0 10px;
+  }
+  .windows{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .win{ background:var(--card); border-radius:8px; padding:14px 16px 13px; }
+  .win h3{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:700;
+    font-size:16px; color:var(--navy); letter-spacing:.01em;
+  }
+  .win .horizon{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:5px; margin:9px 0 8px; }
+  .chip{
+    background:#DCE8F1; border-radius:4px; padding:2px 8px;
+    font-size:11px; color:var(--navy);
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    letter-spacing:.03em;
+  }
+  .chip b{ font-weight:700; }
+  .win p{ font-size:12.5px; line-height:1.5; color:var(--ink); }
+  @media (max-width:680px){ .windows{ grid-template-columns:1fr; } }
+
+  /* ---------- notes ---------- */
+  .notes{
+    margin-top:16px; background:rgba(255,255,255,.07); border-radius:8px;
+    padding:14px 16px; color:#D5E4EF; font-size:12.5px; line-height:1.55;
+  }
+  .notes h2{
+    font-family:'Barlow Semi Condensed', sans-serif; font-weight:600;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color:#9FC2DB; margin-bottom:8px;
+  }
+  .notes p{ margin-bottom:7px; }
+  .notes p:last-child{ margin-bottom:0; }
+  .notes b{ color:#fff; font-weight:600; }
+  footer{ margin-top:14px; font-size:11.5px; color:#7FA2BD; text-align:center; }
+
+  @media (max-width:680px){
+    .tiers{ grid-template-columns:repeat(5,minmax(110px,1fr)); overflow-x:auto; }
+    body{ padding:18px 10px 26px; }
+  }
+  @media print{
+    body{ background:#fff; }
+    header, .eyebrow{ color:var(--navy); }
+    .subtitle{ color:var(--ink-soft); }
+    .notes{ background:#EDF3F8; color:var(--ink); }
+    .notes h2{ color:var(--navy); }
+    .notes b{ color:var(--navy); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Carbon County Flood Warning &amp; Forecast System</div>
+    <h1>How FWFS Scores Flood Threat</h1>
+    <p class="subtitle">Every data product below is scored 0&ndash;4 against the Carbon County FWFS basins on its own thresholds. The dashboard combines these scores
+    into one overall threat posture for each outlook window.</p>
+  </header>
+
+  <div class="tiers" aria-hidden="false">
+    <div class="tier tier0"><div class="num">0</div><div class="name">No Threat</div><div class="posture">Stand down</div></div>
+    <div class="tier tier1"><div class="num">1</div><div class="name">Monitor</div><div class="posture">Stay aware</div></div>
+    <div class="tier tier2"><div class="num">2</div><div class="name">Elevated</div><div class="posture">Lean forward</div></div>
+    <div class="tier tier3"><div class="num">3</div><div class="name">High</div><div class="posture">Prepare to act</div></div>
+    <div class="tier tier4"><div class="num">4</div><div class="name">Critical</div><div class="posture">Act now</div></div>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Data Product</th>
+        <th scope="col">No Threat (0)</th>
+        <th scope="col">Monitor (1)</th>
+        <th scope="col">Elevated (2)</th>
+        <th scope="col">High (3)</th>
+        <th scope="col">Critical (4)</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <tr class="new-row">
+        <td class="product">Excessive Rainfall Outlook (ERO)<span class="new-pill">Updated</span>
+          <span class="src">WPC &middot; Day 1 / 2 / 3 &middot; distance from the basin to each
+          graded outlook polygon</span>
+          <span class="tag">Outlook</span></td>
+        <td class="c0">Nearest Marginal area more than 75 miles away, or no outlook issued</td>
+        <td class="c1">Marginal area within 75 miles of the basin but not covering it</td>
+        <td class="c2">Basin inside a Marginal area</td>
+        <td class="c3">Basin inside a Slight area</td>
+        <td class="c4">Basin inside a Moderate or High area</td>
+      </tr>
+
+      <tr class="new-row">
+        <td class="product">Convective Outlook<span class="new-pill">Updated</span>
+          <span class="src">Storm Prediction Center &middot; Day 1 / 2 / 3 &middot; each risk
+          category scores lower the farther its area sits from the basin</span>
+          <span class="tag">Outlook</span></td>
+        <td class="c0">No risk area within 100 miles, and no general thunderstorm area over the basin</td>
+        <td class="c1">General thunderstorms over the basin, Marginal within 50 miles, or Slight 50&ndash;100 miles out</td>
+        <td class="c2">Slight Risk within 50 miles, or Enhanced 50&ndash;100 miles out</td>
+        <td class="c3">Enhanced Risk within 50 miles, or Moderate / High 50&ndash;100 miles out</td>
+        <td class="c4">Moderate or High Risk within 50 miles</td>
+      </tr>
+
+      <tr class="new-row">
+        <td class="product">WPC Quantitative Precipitation Forecast (QPF)<span class="new-pill">Updated</span>
+          <span class="src">Day 1 / 2 / 3 &middot; 24-hour amounts &middot; highest forecast
+          band that overlaps the basin at all</span>
+          <span class="tag">Forecast</span></td>
+        <td class="c0">Highest overlapping band below 0.25&quot;</td>
+        <td class="c1">0.25&ndash;0.49&quot; band overlaps the basin</td>
+        <td class="c2">0.50&ndash;0.99&quot; band overlaps the basin</td>
+        <td class="c3">1.0&ndash;1.99&quot; band overlaps the basin</td>
+        <td class="c4">2.0&quot; band or higher overlaps the basin</td>
+      </tr>
+
+      <tr>
+        <td class="product">NWS Watch/Warn + AFD
+          <span class="src">Salt Lake City WFO products &middot; scores 1&ndash;2 from forecast
+          discussion language; 3&ndash;4 from active watch/warning products, with warning
+          polygons graded against the true basin boundaries</span>
+          <span class="tag">Alert</span></td>
+        <td class="c0">No watches or warnings, and no relevant forecast discussion language</td>
+        <td class="c1">AFD mentions rain showers possible but heavy rain unlikely</td>
+        <td class="c2">AFD mentions &ldquo;heavy rain possible&rdquo; or &ldquo;flash flood potential&rdquo; without watches</td>
+        <td class="c3">Flash Flood Watch / Flood Watch valid for the window
+          <span class="alt">or a Flash Flood / Flood Warning polygon within 5 miles of a basin boundary</span>
+          <span class="floor">Sets overall floor</span></td>
+        <td class="c4">Flash Flood Warning or Flood Warning polygon <b>touching or overlapping</b> a basin boundary
+          <span class="floor">Sets overall floor</span></td>
+      </tr>
+
+      <tr class="new-row">
+        <td class="product">HRRR QPF &mdash; Short Range (GRIB2)<span class="new-pill">Updated</span>
+          <span class="src">NOAA HRRR read directly from GRIB2 &middot; next 6&ndash;12 hours &middot;
+          every 3&nbsp;km model cell inside the basin union (56 cells)</span>
+          <span class="tag">Forecast</span></td>
+        <td class="c0">&lt;0.10&quot; basin mean
+          <span class="alt">and no corroborated cell &ge;0.20&quot;</span></td>
+        <td class="c1">0.10&ndash;0.25&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.20&quot;</span></td>
+        <td class="c2">0.26&ndash;0.50&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.40&quot;</span></td>
+        <td class="c3">0.51&ndash;0.75&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;0.75&quot;</span></td>
+        <td class="c4">&ge;0.75&quot; basin mean
+          <span class="alt">or a corroborated cell &ge;1.25&quot;</span></td>
+      </tr>
+
+      <tr>
+        <td class="product">NDFD QPF &mdash; Day 2 / Day 3
+          <span class="src">SLC forecaster grids &middot; local calendar-day totals &middot;
+          32 points across the basin union (uses the WPC 24-hour bands)</span>
+          <span class="tag">Forecast</span></td>
+        <td class="c0">&lt;0.25&quot; basin mean for the day</td>
+        <td class="c1">0.25&ndash;0.50&quot; basin mean for the day</td>
+        <td class="c2">0.50&ndash;1.0&quot; basin mean for the day</td>
+        <td class="c3">1.0&ndash;2.0&quot; maxima within the basin</td>
+        <td class="c4">&gt;2.0&quot; maxima within the basin</td>
+      </tr>
+
+      <tr>
+        <td class="product">Precipitable Water (PWAT)
+          <span class="src">Total atmospheric moisture over the basin area</span>
+          <span class="tag">Forecast</span></td>
+        <td class="c0">&lt;0.60&quot;</td>
+        <td class="c1">0.60&ndash;0.74&quot;</td>
+        <td class="c2">0.75&ndash;0.89&quot;</td>
+        <td class="c3">0.90&ndash;1.10&quot;</td>
+        <td class="c4">&gt;1.10&quot;</td>
+      </tr>
+
+      <tr class="new-row">
+        <td class="product">MRMS Radar QPE<span class="new-pill">Updated</span>
+          <span class="src">Radar-only 1-hour rainfall estimate &middot; wettest single
+          radar cell anywhere inside the basin union (~520 cells)</span>
+          <span class="tag">Observation</span></td>
+        <td class="c0">&lt;0.10&quot; in the wettest cell</td>
+        <td class="c1">0.10&ndash;0.24&quot; in the wettest cell</td>
+        <td class="c2">0.25&ndash;0.49&quot; in the wettest cell</td>
+        <td class="c3">0.50&ndash;0.74&quot; in the wettest cell</td>
+        <td class="c4">&ge;0.75&quot; in the wettest cell</td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+
+  <div class="win-head">How Each Outlook Window Is Scored</div>
+  <div class="windows">
+
+    <div class="win">
+      <h3>0&ndash;6 Hour (Nowcast)</h3>
+      <div class="horizon">Rolling 6-hour window from now</div>
+      <div class="chips">
+        <span class="chip">NWS Watch/Warn + AFD <b>3.0</b></span>
+        <span class="chip">HRRR QPF 6-hr <b>3.0</b></span>
+        <span class="chip">MRMS Radar QPE <b>2.0</b></span>
+        <span class="chip">PWAT <b>1.5</b></span>
+      </div>
+      <p>Built from the products that matter when flooding could begin within
+      hours. Official alerts and the short-fuse HRRR rainfall forecast carry
+      the most weight, radar-observed rainfall shows where heavy rain is
+      already falling, and atmospheric moisture flags whether storms can rain
+      efficiently. Longer-range outlooks are deliberately excluded at this
+      time scale.</p>
+    </div>
+
+    <div class="win">
+      <h3>6&ndash;24 Hour (Day 1)</h3>
+      <div class="horizon">Rolling window covering the rest of today</div>
+      <div class="chips">
+        <span class="chip">HRRR QPF 12-hr <b>3.0</b></span>
+        <span class="chip">NWS Watch/Warn + AFD <b>3.0</b></span>
+        <span class="chip">PWAT <b>1.5</b></span>
+        <span class="chip">ERO <b>1.0</b></span>
+        <span class="chip">WPC QPF <b>1.0</b></span>
+        <span class="chip">SPC <b>0.5</b></span>
+      </div>
+      <p>Near-term rainfall guidance and official alerts lead, supported by
+      atmospheric moisture and the national excessive-rainfall and storm
+      outlooks. SPC carries the lowest weight because general thunderstorm
+      potential is less directly tied to flooding than rainfall amount,
+      moisture, or flood-specific alerts.</p>
+    </div>
+
+    <div class="win">
+      <h3>Day 2</h3>
+      <div class="horizon">Tomorrow, local calendar day</div>
+      <div class="chips">
+        <span class="chip">ERO <b>1.5</b></span>
+        <span class="chip">NDFD QPF Daily <b>1.5</b></span>
+        <span class="chip">SPC <b>1.0</b></span>
+        <span class="chip">WPC QPF <b>1.0</b></span>
+      </div>
+      <p>Blends the flash-flood-focused ERO with tomorrow's forecast rainfall
+      from both the local NDFD grids and national WPC guidance, plus
+      thunderstorm potential from SPC. HRRR does not reach reliably this far
+      out, so the daily windows stay on NDFD. Watches and warnings carry no
+      weight at this range; if one is ever issued whose valid period genuinely
+      reaches Day 2, it raises the level through the floor instead.</p>
+    </div>
+
+    <div class="win">
+      <h3>Day 3</h3>
+      <div class="horizon">Two days out, local calendar day</div>
+      <div class="chips">
+        <span class="chip">ERO <b>1.5</b></span>
+        <span class="chip">SPC <b>1.0</b></span>
+        <span class="chip">WPC QPF <b>1.0</b></span>
+        <span class="chip">NDFD QPF Daily <b>1.0</b></span>
+      </div>
+      <p>Same product mix as Day 2, with the NDFD daily rainfall weight
+      stepped down slightly because forecast skill decreases with lead time.
+      Watches and warnings act through the floor only, in the rare case one
+      is valid that far ahead.</p>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h2>Rules That Apply to Every Window</h2>
+    <p><b>Weighted blend.</b> Each window's product scores are multiplied by the
+    weights shown above and averaged, so no single soft signal can flip a quiet
+    day on its own. The result maps back to the five threat categories.</p>
+    <p><b>Warnings are graded by distance from the basin.</b> A Flash Flood or Flood
+    Warning polygon that touches or overlaps a basin boundary forces that window to
+    CRITICAL. A warning polygon within 5 miles of a boundary forces HIGH &mdash; close
+    enough to matter, but not yet over the watershed. Beyond 5 miles a warning sets no
+    floor at all and the other products stand on their own. Each basin is
+    tested independently, and the nearest-miss distance is recorded either way.</p>
+    <p><b>Watches set a floor too.</b> An active Flood Watch or Flash Flood Watch forces the
+    affected window to at least HIGH. Watches apply only to the windows their valid times
+    actually cover &mdash; a watch for today does not raise the Day 2 or Day 3 outlook.</p>
+    <p><b>AFD language informs, but does not override.</b> Plain-language signals from the
+    Salt Lake City forecast discussion (scores 1&ndash;2) feed the blend and the NWS
+    Watch/Warn + AFD indicator, but only actual watch and warning products can force
+    the overall level upward.</p>
+    <p><b>Outlooks score on distance, not just containment.</b> The national ERO and SPC
+    outlooks are drawn at a scale far larger than these watersheds, so an outlook edge a
+    few miles away still says something about the day. Both products therefore score a
+    nearby area at a reduced level rather than ignoring it &mdash; but SPC's General
+    Thunderstorm and Marginal categories get no distance grace beyond 50 miles, since a
+    broad low-end area two counties away is not information about these basins.</p>
+    <p><b>&ldquo;Corroborated cell&rdquo; means more than one.</b> The short-range HRRR forecast
+    scores on either the basin average or a wet cell anywhere in the basin, so a
+    concentrated storm core over the headwaters is not averaged away. To avoid a single
+    stray model cell setting the tone, the trigger uses the <i>second</i>-wettest cell &mdash;
+    a real storm core covers several 3&nbsp;km cells, an artifact covers one.</p>
+    <p><b>Rainfall intensity can raise a level on its own.</b> If the model forecasts an
+    unusually wet single hour inside the window &mdash; 0.50&quot; in an hour for Monitor,
+    0.75&quot; for Elevated &mdash; that sets a minimum level even when the totals above stay
+    low. Short, intense bursts are what drive flash flooding in these basins.</p>
+    <p><b>Observed radar scores the wettest cell, not the average.</b> A monsoon convective core
+    routinely covers under 5% of a watershed, so a basin average would hide it. This is
+    also why a CRITICAL radar tier can sit beside rain gauges reading 0.00 &mdash; with only
+    a handful of gauges across roughly <span style="background:#ffe08a;color:#000;padding:0 3px">[TBD: Carbon basin area]</span> km&sup2;, the expected number that catch a core
+    that small is well under one. The dashboard reports how many radar cells made up the
+    core so the two readings can be reconciled at a glance.</p>
+    <p><b>Day 3 note.</b> NDFD rainfall grids extend about 72 hours, so the Day 3 daily
+    total can exclude the final early-morning hours of that day. Coverage is tracked
+    and displayed with the data.</p>
+  </div>
+
+  <footer>Carbon County OEM &middot; FWFS (Flood Warning & Forecasting System) &middot; Thresholds current as of July 2026</footer>
+
+</div>
+</body>
+</html>
