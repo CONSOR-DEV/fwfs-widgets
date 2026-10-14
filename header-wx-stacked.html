@@ -19,14 +19,15 @@
     color: #fff;
     cursor: pointer;
     user-select: none;
-    padding: 4px 6px;
+    padding: 6px;
     border-radius: 8px;
     transition: background .15s ease;
   }
   #nl-wx:hover { background: rgba(41,171,226,.12); }
   #nl-wx:focus-visible { outline: 2px solid #29ABE2; outline-offset: 2px; }
 
-  #nl-wx-icon { display: inline-flex; align-items: center; }
+  #nl-wx-icon { display: inline-flex; align-items: center; flex-shrink: 0; }
+  #nl-wx-icon svg { overflow: visible; display: block; }
 
   /* stacked text column, left-justified */
   #nl-wx-text {
@@ -96,13 +97,13 @@
 
   function wxIcon(d){
     d = (d||"").toLowerCase();
-    const w = 'width="30" height="30" viewBox="0 0 24 24" fill="none" '+
+    const w = 'width="24" height="24" viewBox="0 0 24 24" fill="none" '+
               'stroke="'+SKY+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
 
     if(d.includes("thunder"))
       return `<svg ${w}><path d="M19 16.9A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/><path d="M13 11l-4 6h6l-4 6" stroke="${SUN}"/></svg>`;
     if(d.includes("rain")||d.includes("shower")||d.includes("drizzle"))
-      return `<svg ${w}><path d="M16 13a5 5 0 100-8 7 7 0 10-9 6.7"/><line x1="8" y1="19" x2="8" y2="21"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="16" y1="19" x2="16" y2="21"/></svg>`;
+      return `<svg ${w}><path d="M20 16.58A5 5 0 0018 7h-1.26A8 8 0 104 15.25"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="16" y1="13" x2="16" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/></svg>`;
     if(d.includes("snow")||d.includes("flurr")||d.includes("sleet")||d.includes("ice"))
       return `<svg ${w}><path d="M20 17.6A5 5 0 0018 8h-1.26A8 8 0 104 16.25"/><line x1="8" y1="20" x2="8.01" y2="20"/><line x1="12" y1="22" x2="12.01" y2="22"/><line x1="16" y1="20" x2="16.01" y2="20"/></svg>`;
     if(d.includes("fog")||d.includes("haze")||d.includes("mist")||d.includes("smoke")||d.includes("dust"))
